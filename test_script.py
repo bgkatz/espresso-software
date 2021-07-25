@@ -1,8 +1,10 @@
 from espressoMachine import *
+from espressoModes import *
 import time
 
+'''
 x = espressoMachine()
-x.log_enabled = True
+x.log_enabled = False
 #x.sample()
 
 
@@ -18,3 +20,12 @@ print(x.log)
 x.saveLog()
 x.clearLog()
 print(x.log)
+'''
+
+x = espressoMachine()
+y = idleMode()
+
+while(True):
+    print(x.state.pressure())
+    y.run(x.state, x.cmd)
+    time.sleep(.5)

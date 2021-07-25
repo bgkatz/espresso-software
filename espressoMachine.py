@@ -6,6 +6,15 @@
 # Group temperature command
 # Pump command type (0=Disabled, 1=Pressure, 2=Flow, 3=RPM)
 # Flow direction (0=Tank, 1=Group, 3=Drip, 4=Spout)
+# Tare (1 = tare)
+
+# State: 
+# Sample timestamp
+# Pressure
+# Flow
+# Water Temp
+# Group Temp
+# Weight since scale tare
 
 from espressoComm import *
 
@@ -15,6 +24,8 @@ import scipy
 import threading
 
 logdir = 'logs/'
+pID = 1155
+vID = 0xC1B0
 
 class espressoMachineState():
     # Sensor measurements and estimates #
@@ -31,14 +42,16 @@ class espressoMachineState():
         return self.state_vec[3]
     def groupTemp(self):
         return self.state_vec[4]
+    def weight(Self):
+        return self.state_vec[5]
 
 class esspressoMachineCommands():
     # Commands #
     def __init__(self):
-        self.cmd_vec = np.zeros([5])
+        self.cmd_vec = np.zeros([6])
 
-    def setCommands(pumpCmd, waterTempCmd, groupTempCmd, pumpCmdType, flowDir):
-        self.cmd_vec = np.array([pumpCmd, waterTempCmd, groupTempCmd, pumpCmdType, flowDir])
+    def setCommands(pumpCmd, waterTempCmd, groupTempCmd, pumpCmdType, flowDir, tare):
+        self.cmd_vec = np.array([pumpCmd, waterTempCmd, groupTempCmd, pumpCmdType, flowDir, tare])
     def setPumpCmd(cmd):
         self.cmd_vec[0] = cmd
     def setWaterTempCmd(cmd):
@@ -49,13 +62,15 @@ class esspressoMachineCommands():
         self.cmd_vec[3] = cmd
     def setFlowDir(cmd):
         self.cmd_vec[4] = cmd
+    def tare(cmd):
+        self.cmd_vec[5] = cmd
 
 
 class espressoMachine():
     # Machine interface #
 
     def __init__(self):
-        self.comm = espressoComm(1155, 0xC1B0)
+        self.comm = espressoComm(pID, vID)
         self.state = espressoMachineState()
         self.cmd = esspressoMachineCommands()
         self.log = np.zeros((np.hstack((self.cmd.cmd_vec, self.state.state_vec))).shape);
@@ -75,6 +90,7 @@ class espressoMachine():
         # Send cmds over USB #
         self.comm.out_floats = self.cmd.cmd_vec
         self.comm.write()
+        self.cmd.tare(0)    # reset tare to zero
 
     def logState(self):
         # Append current state to log #
@@ -99,4 +115,3 @@ class espressoMachine():
             self.sendCommands()
             if(self.log_enabled):
                 self.logState()
-            #time.sleep(.1)

@@ -18,7 +18,7 @@ class espressoComm():
         self.input_buff = []
         self.output_buff = []
         self.in_floats = []
-        self.out_floats = [0, 0, 0, 0, 0]
+        self.out_floats = [0, 0, 0, 0, 0, 0]
 
     def read(self):
         try:
