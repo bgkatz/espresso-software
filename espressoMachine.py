@@ -5,16 +5,20 @@
 # Water temperature command
 # Group temperature command
 # Pump command type (0=Disabled, 1=Pressure, 2=Flow, 3=RPM)
-# Flow direction (0=Tank, 1=Group, 3=Drip, 4=Spout)
+# Flow direction (0=Tank, 1=Group, 2=Drip, 3=Spout, 4=Steam)
 # Tare (1 = tare)
 
 # State: 
 # Sample timestamp
-# Pressure
-# Flow
-# Water Temp
-# Group Temp
-# Weight since scale tare
+# Pressure                  (Bar)
+# Flow                      (mL/s)
+# Water Temp                (C)
+# Heater Temp               (C)
+# Group Temp                (C)
+# Pump velocity             (rad/s)
+# Pump torque command       (N-m)
+# Pump torque               (N-m)
+# Weight since scale tare   (g)
 
 from espressoComm import *
 
@@ -31,7 +35,7 @@ class espressoMachineState():
     # Sensor measurements and estimates #
 
     def __init__(self):
-        self.state_vec = np.zeros([5])
+        self.state_vec = np.zeros([10])
     def time(self):
         return self.state_vec[0]
     def pressure(self):
@@ -40,10 +44,18 @@ class espressoMachineState():
         return self.state_vec[2]
     def waterTemp(self):
         return self.state_vec[3]
-    def groupTemp(self):
+    def heaterTemp(self):
         return self.state_vec[4]
-    def weight(Self):
+    def groupTemp(self):
         return self.state_vec[5]
+    def pumpVel(self):
+        return self.state_vec[6]
+    def pumpTorqueCmd(self):
+        return self.state_vec[7]
+    def pumpTorque(self):
+        return self.state_vec[8]
+    def weight(Self):
+        return self.state_vec[9]
 
 class esspressoMachineCommands():
     # Commands #
