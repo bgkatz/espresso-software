@@ -4,7 +4,7 @@
 # Pump command
 # Water temperature command
 # Group temperature command
-# Pump command type (0=Disabled, 1=Pressure, 2=Flow, 3=RPM)
+# Pump command type (0=Disabled, 1=Pressure (bar), 2=Flow (mL/s), 3=Velocity (rad/s), 4=torque (N-m))
 # Flow direction (0=Tank, 1=Group, 2=Drip, 3=Spout, 4=Steam)
 # Tare (1 = tare)
 
@@ -54,7 +54,7 @@ class espressoMachineState():
         return self.state_vec[7]
     def pumpTorque(self):
         return self.state_vec[8]
-    def weight(Self):
+    def weight(self):
         return self.state_vec[9]
 
 class esspressoMachineCommands():
@@ -64,17 +64,17 @@ class esspressoMachineCommands():
 
     def setCommands(pumpCmd, waterTempCmd, groupTempCmd, pumpCmdType, flowDir, tare):
         self.cmd_vec = np.array([pumpCmd, waterTempCmd, groupTempCmd, pumpCmdType, flowDir, tare])
-    def setPumpCmd(cmd):
+    def setPumpCmd(self, cmd):
         self.cmd_vec[0] = cmd
-    def setWaterTempCmd(cmd):
+    def setWaterTempCmd(self, cmd):
         self.cmd_vec[1] = cmd
-    def setGroupTempCmd(cmd):
+    def setGroupTempCmd(self, cmd):
         self.cmd_vec[2] = cmd
-    def setPumpCmdType(cmd):
+    def setPumpCmdType(self, cmd):
         self.cmd_vec[3] = cmd
-    def setFlowDir(cmd):
+    def setFlowDir(self, cmd):
         self.cmd_vec[4] = cmd
-    def tare(cmd):
+    def tare(self, cmd):
         self.cmd_vec[5] = cmd
 
 
@@ -93,10 +93,11 @@ class espressoMachine():
         self.io_thread.daemon = True
         self.io_thread.start()
 
+
     def sample(self):
         # Read data from USB, update machine.state #
         self.comm.read()
-        self.state.state_vec = np.array(self.comm.in_floats[0:5])
+        self.state.state_vec = np.array(self.comm.in_floats[0:10])
 
     def sendCommands(self):
         # Send cmds over USB #

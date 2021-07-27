@@ -17,8 +17,8 @@ class idleMode():
     def __init__(self):
         pass
     def run(self, state, cmds):
-        cmds.cmd_vec = np.zeros([5])
-        print('running idle mode')
+        cmds.cmd_vec = np.zeros(cmds.cmd_vec.shape)
+        #print('running idle mode')
 
 class manualMode():
     def __init__(self):
@@ -29,52 +29,68 @@ class manualMode():
 class nineBarShot():
     # Standard 9-bar shot with 1-bar pre-infusion
     def __init__(self):
-        self.preheatDone = False
-        self.piDone = False
-        self.shotDone = False
+        self.preheat_done = False
+        self.pi_done = False
+        self.shot_done = False
+        self.done = False
 
         self.t_start = 0
         self.t_pi = 10.0
-        self.water_temp = 93.0
-        self.group_temp = 93.0
-        self.preheat_flow = 1.0
-        self.pi_pressure = 1.0
-        self.shot_presure = 1.0
+        self.water_temp = 15.0
+        self.group_temp = 15.0
+        self.preheat_flow = 2.0
+        self.pi_flow = 4.0
+        self.pi_end_pressure = 2.0;
+        self.shot_pressure = 2.0
         self.shot_weight = 32.0
 
     def run(self, state, cmds):
-        if(!self.preheatDone):
+        if(not self.preheat_done):
             self.preheat(state, cmds)
-        elif(!self.piDone):
+        elif(not self.pi_done):
             self.preinfuse(state, cmds)
-        elif(!self.shotDOne):
+        elif(not self.shot_done):
             self.shot(state, cmds)
         else:
             self.end(state, cmds)
 
     def preheat(self, state, cmds):
-        self.cmds.setFlowDir(0)                     # flow to tank during preheat
-        self.cmds.setPumpCmdType(2)                 # pump in flow control
-        self.cmds.setPumpCmd(self.preheat_flow)     # preheat flow
-        self.cmds.setWaterTempCmd(self.water_temp)  # heat water
-        self.cmds.setGroupTempCmd(self.group_temp)  # heat group 
-        if ((state.waterTemp()>=self.water_temp) and (state.groupTemp()>=self.group_temp)):
+        print('preheating.  wt: ', state.waterTemp(), ' gt ', state.groupTemp())
+        cmds.setFlowDir(0)                     # flow to tank during preheat
+        cmds.setPumpCmdType(2)                 # pump in flow control
+        cmds.setPumpCmd(self.preheat_flow)     # preheat flow
+        cmds.setWaterTempCmd(self.water_temp)  # heat water
+        cmds.setGroupTempCmd(self.group_temp)  # heat group 
+        if ((state.waterTemp() >= self.water_temp) and (state.groupTemp() >= self.group_temp)):
             self.t_start = state.time()
-            self.preheatDone = True
+            self.preheat_done = True
 
     def preinfuse(self, state, cmds):
-        self.cmds.setFlowDir(1)                     # flow to group
-        self.cmds.setPumpCmdType(1)                 # pump in pressure control
-        self.cmds.setPumpCmd(self.pi_pressure)      # preinfusion pressure
-        if(state.time() > (self.start_time + self.t_pi)):
-            self.cmds.tare(1)                       # tare scale after preinfusion
-            self.piDone = True
+        print('preinfusion.  flow: ', state.flow(), ' pr ', state.pressure())
+        if((state.time()-self.t_start)<1.0):
+            cmds.setFlowDir(2)
+        else:
+            cmds.setFlowDir(1)                     # flow to group
+        cmds.setPumpCmdType(2)                 # pump in pressure control
+        cmds.setPumpCmd(self.pi_flow)      # preinfusion flow
+        #if(state.time() > (self.t_start + self.t_pi)):
+        if(state.pressure() >= self.pi_end_pressure):
+            cmds.tare(1)                       # tare scale after preinfusion
+            time.sleep(.2)
+            self.pi_done = True
         
     def shot(self, state, cmds):
-        self.cmds.setPumpCmd(self.shot_pressure)    # shot pressure
+        print('shot.  flow: ', state.flow(), ' pr ', state.pressure(), ' w ', state.weight())
+        cmds.setPumpCmdType(1)
+        cmds.setPumpCmd(self.shot_pressure)    # shot pressure
         if(state.weight()>self.shot_weight):
-            self.shotDone = True
+            self.shot_done = True
 
     def end(self, state, cmds):
-        self.cmds.setPumpCmd(0)                     # zero pressure command
-        self.cmds.setFlowDir(3)                     # Bleed group to drip tray
+        print('done')
+        cmds.setPumpCmd(0)                     # zero pressure command
+        time.sleep(1)
+        cmds.setFlowDir(2)                     # Bleed group to drip tray
+        time.sleep(1)
+        cmds.setFlowDir(0)
+        self.done = True

@@ -23,9 +23,13 @@ print(x.log)
 '''
 
 x = espressoMachine()
-y = idleMode()
-
-while(True):
-    print(x.state.pressure())
+y = nineBarShot()
+#y = idleMode()
+x.log_enabled = True
+while(not y.done):
+    #print(x.state.pressure(), x.state.flow(),x.state.waterTemp(), x.state.groupTemp(), x.state.weight())
     y.run(x.state, x.cmd)
-    time.sleep(.5)
+    time.sleep(.1)
+x.saveLog()
+x.clearLog()
+x.log_enabled = False
