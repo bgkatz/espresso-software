@@ -57,13 +57,14 @@ class nineBarShot():
 
         self.t_start = 0
         self.t_pi = 10.0
-        self.water_temp = 15.0
-        self.group_temp = 15.0
+        self.water_temp = 93.0
+        self.group_temp = 93.0
         self.preheat_flow = 2.0
-        self.pi_flow = 4.0
-        self.pi_end_pressure = 2.0;
-        self.shot_pressure = 2.0
+        self.pi_flow = 0.0
+        self.pi_end_pressure = 4.0
+        self.shot_pressure = 9.0
         self.shot_weight = 32.0
+        self.temp_tol = .5
 
     def run(self, state, cmds):
         if(not self.preheat_done):
@@ -82,7 +83,8 @@ class nineBarShot():
         cmds.setPumpCmd(self.preheat_flow)     # preheat flow
         cmds.setWaterTempCmd(self.water_temp)  # heat water
         cmds.setGroupTempCmd(self.group_temp)  # heat group 
-        if ((state.waterTemp() >= self.water_temp) and (state.groupTemp() >= self.group_temp)):
+        cmds.tare(1)
+        if ((np.abs(state.waterTemp() - self.water_temp)<self.temp_tol) and (np.abs(state.groupTemp() - self.group_temp)<self.temp_tol)):
             self.t_start = state.time()
             self.preheat_done = True
 
@@ -94,7 +96,9 @@ class nineBarShot():
             cmds.setFlowDir(1)                     # flow to group
         cmds.setPumpCmdType(2)                 # pump in pressure control
         cmds.setPumpCmd(self.pi_flow)      # preinfusion flow
+        self.pi_flow += .01
         #if(state.time() > (self.t_start + self.t_pi)):
+        cmds.tare(1)
         if(state.pressure() >= self.pi_end_pressure):
             cmds.tare(1)                       # tare scale after preinfusion
             time.sleep(.2)

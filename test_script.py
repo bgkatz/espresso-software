@@ -24,8 +24,8 @@ x.clearLog()
 print(x.log)
 '''
 
-'''
-x = espressoMachine()
+
+x = fakeEspressoMachine()
 x.startIO()
 y = nineBarShot()
 #y = idleMode()
@@ -37,6 +37,3 @@ while(not y.done):
 x.saveLog()
 x.clearLog()
 x.log_enabled = False
-'''
-
-x = fakeEspressoMachine()
