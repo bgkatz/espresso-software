@@ -1,9 +1,11 @@
 from espressoMachine import *
 from espressoModes import *
+from espressoFSM import *
 import time
 
 '''
 x = espressoMachine()
+x.start()
 x.log_enabled = False
 #x.sample()
 
@@ -22,7 +24,9 @@ x.clearLog()
 print(x.log)
 '''
 
+'''
 x = espressoMachine()
+x.startIO()
 y = nineBarShot()
 #y = idleMode()
 x.log_enabled = True
@@ -33,3 +37,6 @@ while(not y.done):
 x.saveLog()
 x.clearLog()
 x.log_enabled = False
+'''
+
+x = fakeEspressoMachine()

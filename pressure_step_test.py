@@ -2,7 +2,8 @@ from espressoMachine import *
 from espressoModes import *
 import time
 
-x = espressoMachine()
+x = fakeEspressoMachine()
+x.startIO()
 x.cmd.setFlowDir(2)     # flow to drip tray
 x.cmd.setPumpCmdType(1)    # pressure
 x.cmd.setPumpCmd(1)

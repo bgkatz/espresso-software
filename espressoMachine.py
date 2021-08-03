@@ -91,8 +91,15 @@ class espressoMachine():
         # IO thread #
         self.io_thread = threading.Thread(target = self.ioLoop)
         self.io_thread.daemon = True
+        #self.io_thread.start()
+
+    def startIO(self):
+        # Start running the IO thread #
         self.io_thread.start()
 
+    def stopIO(self):
+        # Stop running IO thread #
+        self.io_thread.stop()
 
     def sample(self):
         # Read data from USB, update machine.state #
@@ -128,3 +135,35 @@ class espressoMachine():
             self.sendCommands()
             if(self.log_enabled):
                 self.logState()
+
+class fakeEspressoMachine(espressoMachine):
+    def __init__(self):
+        espressoMachine.__init__(self)
+        self.comm = False
+        self.t_sample = 0
+    def sample(self):
+        alpha = .01
+        alpha2 = .005
+        r = .2
+        self.t_sample = time.time()
+        dt = self.t_sample - self.state.state_vec[0]
+        self.state.state_vec[0] = self.t_sample
+        if(self.cmd.cmd_vec[3] == 0):   # pump off
+            self.state.state_vec[1] = 0
+        elif(self.cmd.cmd_vec[3] ==1 ): # pressure control
+            self.state.state_vec[1] = (1-alpha)*self.state.state_vec[1] + alpha*self.cmd.cmd_vec[0]
+            self.state.state_vec[2] = r*self.state.state_vec[1]
+        elif(self.cmd.cmd_vec[3] == 2): # flow control
+            self.state.state_vec[2] = (1-alpha)*self.state.state_vec[2] + alpha*self.cmd.cmd_vec[0]
+            self.state.state_vec[1] = self.state.state_vec[2]/r
+        self.state.state_vec[3] = (1-alpha2)*self.state.state_vec[3] + alpha2*self.cmd.cmd_vec[1]
+        self.state.state_vec[4] = (1-alpha)*self.state.state_vec[4] + alpha*self.cmd.cmd_vec[1]
+        self.state.state_vec[5] = (1-alpha)*self.state.state_vec[5] + alpha*self.cmd.cmd_vec[2]
+        self.state.state_vec[6] = self.state.state_vec[2]*2*np.pi/.33
+        self.state.state_vec[7] = self.state.state_vec[1]*.33/(10*2*np.pi)
+        self.state.state_vec[8] = self.state.state_vec[7] + 1e-3*(np.random.rand()-.5)
+        self.state.state_vec[9] = self.state.state_vec[9] + dt*self.state.state_vec[0]
+        if(self.cmd.cmd_vec[5]):    # Tare
+            self.state.state_vec[9] = 0
+    def sendCommands(self):
+        pass

@@ -1,7 +1,7 @@
 ### Espresso Machine Mode Functions ###
 # Each mode has the inputs:
 #   espressoMachineState: sensor measurements, etc.
-#   uiInput: inputs from the GUI
+#   ui Input: inputs from the GUI
 # and outputs:
 #   espressoMachineCommands: commands to the macine - pressure, temperature, etc.
 #   displayData: data to be shown by the GUI
@@ -20,7 +20,28 @@ class idleMode():
         cmds.cmd_vec = np.zeros(cmds.cmd_vec.shape)
         #print('running idle mode')
 
+class preheatMode():
+    # Cycles water through tank and heats #
+    def __init__(self):
+        pass
+    def run(self, state, cmds, waterTempCmd=93.0, groupTempCmd=93.0, flowCmd=2.0):
+        cmds.setFlowDir(0)          # flow to tank
+        cmds.setPumpCmdTypoe(2)     # flow control
+        cmds.setPumpCmd(flowCmd) 
+        cmds.setWaterTempCmd(waterTempCmd)
+        cmds.setGroupTempCMd(groupTempCmd)
+
+class flushMode():
+    # Flushes water through group #
+    def __init__(self):
+        pass
+    def run(self, state, cmds, flowCmd = 4.0):
+        cmds.setFlowDir(1)      # flow to group
+        cmds.setPumpCmdType(2)  # flow control
+        cmds.setPumpCmd(flowCmd)
+
 class manualMode():
+    # Manual control from GUI #
     def __init__(self):
         self.cmds = espressoMachineCommands()
     def run(self, state, cmds):
