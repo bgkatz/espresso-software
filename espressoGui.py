@@ -9,17 +9,18 @@ import sys
 import time
 import struct
 import time
-from fsm import*
-from usb_comm import *
-from shot_trajectory import *
 
+from espressoMachine import *
+from espressoModes import *
+from theme import *
 
 logdir = 'logs/'
 
 
-
 PLOT_POINTS = 1000
 PLOT_NTH_POINT = 1
+
+
 
 
 tStart = time.time();
@@ -34,21 +35,31 @@ class MainWindow(Ui_EspressoGUI):
         self.mw = QtGui.QMainWindow()
         self.setupUi(self.mw)
 
+        self.machine = fakeEspressoMachine()
+        self.mode = nineBarShot()
+        self.machine.startIO()
+        self.machine.log_enabled = True
+        while(not self.mode.done):
+            self.mode.run(self.machine.state, self.machine.cmd)
+            time.sleep(.1)
+        self.machine.log_enabled = False
+
+
         # Add Plots #
-        self.plot1 = pg.PlotWidget(background=(34, 34, 34), title='Pressure (Pa)')
-        self.plot2 = pg.PlotWidget(background=(34, 34, 34), title='Flow (mL/s)')
-        self.plot3 = pg.PlotWidget(background=(34, 34, 34), title='Temperature (C)')
+        self.plot1 = pg.PlotWidget(background=bg_color, title='Pressure (Pa)')
+        #self.plot2 = pg.PlotWidget(background=bg_color, title='Flow (mL/s)')
+        self.plot3 = pg.PlotWidget(background=bg_color, title='Temperature (C)')
         self.plot1.showAxis('right')
-        self.plot1.getAxis('right').setLabel('Pressure (Bar)', color=(0x00, 0x3f, 0x5c))
-        self.plot2.showAxis('right')
-        self.plot2.getAxis('right').setLabel('Flow (mL/s)', color=(0x7a, 0x51, 0x95))
+        self.plot1.getAxis('right').setLabel('Pressure (Bar)', color=blue1)
+        #self.plot2.showAxis('right')
+        #self.plot2.getAxis('right').setLabel('Flow (mL/s)', color=white3)
         self.plot3.showAxis('right')
-        self.plot3.getAxis('right').setLabel('Temperature (C)', color=(0xef, 0x56, 0x75))
+        self.plot3.getAxis('right').setLabel('Temperature (C)', color=orange1)
         self.plotLayout.addWidget(self.plot1)
-        self.plotLayout.addWidget(self.plot2)
+        #self.plotLayout.addWidget(self.plot2)
         self.plotLayout.addWidget(self.plot3)
         self.plot1.addLegend()
-        self.plot2.addLegend()
+        #self.plot2.addLegend()
         self.plot3.addLegend()
 
         # Add plotting to a thread #
@@ -63,11 +74,14 @@ class MainWindow(Ui_EspressoGUI):
         self.saveButton.clicked.connect(self.saveLogPressed)
         self.pressureSlider.valueChanged.connect(self.pressureSliderChanged)
         self.tempBox.valueChanged.connect(self.tempBoxChanged)
-        self.trajButton.clicked.connect(self.trajPressed)
         self.manualButton.clicked.connect(self.manualPressed)
         self.flushButton.clicked.connect(self.flushPressed)
         self.presPushButton.clicked.connect(self.pressurePressed)
         self.flowPushButton.clicked.connect(self.flowPressed)
+
+        # Add modes to list #
+        for mode in custom_modes:
+            self.modeList.addItem(mode.title)
 
         self.t_last = time.time()
 
@@ -157,106 +171,49 @@ class MainWindow(Ui_EspressoGUI):
             self.presPushButton.setStyleSheet(self.offButtonStyle)
             self.flowPushButton.setStyleSheet(self.offButtonStyle)
         #try:
+
+        '''
+
+
         self.plot1.clear()
-        self.plot2.clear()
+        #self.plot2.clear()
         self.plot3.clear()
-        lw = 10
+        
         maxpoints = 500
 
-        if(self.fsm.mode.name == 'TRAJECTORY'):
-            ind_p = np.where(self.fsm.mode.traj.pumpCmdTypeVec == 1)
-            ind_f = np.where(self.fsm.mode.traj.pumpCmdTypeVec == 2)
-            curve1 = pg.PlotCurveItem(self.fsm.mode.traj.timeVec[ind_p], self.fsm.mode.traj.pumpCmdVec[ind_p], name='Pessure Trajectory')
-            curve1.setPen(color=(0x00, 0x3f, 0x5c), width=lw, style=QtCore.Qt.DashLine)
-            curve2 = pg.PlotCurveItem(self.fsm.mode.traj.timeVec[ind_f], self.fsm.mode.traj.pumpCmdVec[ind_f], name='Flow Trajectory')
-            curve2.setPen(color=(0x7a, 0x51, 0x95), width=lw, style=QtCore.Qt.DashLine)
-            #curve1 = pg.PlotCurveItem(self.fsm.mode.traj.timeVec, self.traj.pumpCmdVec, name='Pressure Trajectory')
-            #curve1.setPen(color=(0x00, 0x3f, 0x5c), width=lw)
-            curve3 = pg.PlotCurveItem(self.fsm.mode.traj.timeVec, self.fsm.mode.traj.tempCmdVec, name = 'Temperature Trajectory')
-            curve3.setPen(color=(0xef, 0x56, 0x75), width=lw, style=QtCore.Qt.DashLine)
-            self.plot1.setRange(xRange=[0, np.max(self.fsm.mode.traj.timeVec)])
-            self.plot2.setRange(xRange=[0, np.max(self.fsm.mode.traj.timeVec)])
-            self.plot3.setRange(xRange=[0, np.max(self.fsm.mode.traj.timeVec)])
-            self.plot1.addItem(curve1, clear=True)
-            self.plot2.addItem(curve2, clear=True)
-            self.plot3.addItem(curve3, clear=True)
+        ### Plot 1 ###
+        ind_p = self.machine.log[:,3] == 1      # log points where command type is pressure
+        ind_f = self.machine.log[:,3] == 2      # log points where command type is flow
+        c1 = pg.PlotCurveItem(self.machine.log[ind_p,6], self.machine.log[ind_p,0], name='Pressure Cmd')    # pressure commands
+        c2 = pg.PlotCurveItem(self.machine.log[ind_f,6], self.machine.log[ind_f,0], name='Flow Cmd')        # flow commands
+        c3 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,7], name='Pressure')                # pressure
+        c4 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,8], name='Flow')                    # flow
+        c1.setPen(color = blue1, width = lw, style=QtCore.Qt.DashLine)
+        c2.setPen(color = green1, width = lw, style=QtCore.Qt.DashLine)
+        c3.setPen(color = blue7, width = lw)
+        c4.setPen(color = green2, width = lw)
+        self.plot1.addItem(c1)
+        self.plot1.addItem(c2)
+        self.plot1.addItem(c3)
+        self.plot1.addItem(c4)
 
-            if(self.fsm.mode.traj.running or self.fsm.mode.traj.ended):
-                data = self.fsm.io.data
-                x = data[:,0]     # Time
-                x = x-x[0]
-                x = list(x)
-                y1 = list(data[:,1])    # Pressure
-                y2 = list(data[:,2])    # Flow
-                y3 = list(data[:,3])    # Temp
-                curve4 = pg.PlotCurveItem(x, y1)
-                curve4.setPen(color=(0x10, 0x4f, 0x6c), width=lw)
-                curve5 = pg.PlotCurveItem(x, y2)
-                curve5.setPen(color=(0x8a, 0x61, 0xa5), width=lw)
-                curve6 = pg.PlotCurveItem(x, y3)
-                curve6.setPen(color=(0xff, 0x66, 0x85), width=lw)
-                self.plot1.addItem(curve4)
-                self.plot2.addItem(curve5)
-                self.plot3.addItem(curve6)
-        elif(self.fsm.mode.name == 'MANUAL'):
-            if(self.fsm.io.start_logging):
-                data = self.fsm.io.data
-                cmds = self.fsm.io.cmds
-                x = data[:,0]     # Time
-                x = x-x[0]
-                c1 = cmds[:,0]    # Pump command
-                c2 = cmds[:,1]    # Temp command
-                y1 = data[:,1]    # Pressure
-                y2 = data[:,2]    # Flow
-                y3 = data[:,3]    # Water Temp
-                y4 = data[:,4]    # Heater Temp
-                y5 = data[:,5]    # Group Temp
-                if(len(x)>maxpoints):
-                    inds = np.linspace(0, len(x)-2, maxpoints)
-                    inds = inds.astype(np.int)
-                    x = x[inds]
-                    c1 = c1[inds]
-                    c2 = c2[inds]
-                    y1 = y1[inds]
-                    y2 = y2[inds]
-                    y3 = y3[inds]
-                    y4 = y4[inds]
-                    y5 = y5[inds]
-                x = list(x)
-                c1 = list(c1)
-                c2 = list(c2)
-                y1 = list(y1)
-                y2 = list(y2)
-                y3 = list(y3)
-                y4 = list(y4)
-                y5 = list(y5)
-                curve1 = pg.PlotCurveItem(x, c1)
-                curve1.setPen(color=(0x00, 0x3f, 0x5c), width=lw, style=QtCore.Qt.DashLine)
-                curve2 = pg.PlotCurveItem(x, c2)
-                curve2.setPen(color=(0xbf, 0x26, 0x85), width=lw, style=QtCore.Qt.DashLine)
-                curve4 = pg.PlotCurveItem(x, y1)
-                curve4.setPen(color=(0x10, 0x4f, 0x6c), width=lw)
-                curve5 = pg.PlotCurveItem(x, y2)
-                curve5.setPen(color=(0x8a, 0x61, 0xa5), width=lw)
-                curve6 = pg.PlotCurveItem(x, y3, name='Water Temperature')
-                curve6.setPen(color=(0xff, 0x66, 0x85), width=lw)
-                curve7 = pg.PlotCurveItem(x, y4, name='Heater Temperature')
-                curve7.setPen(color=(0xdf, 0x46, 0x85), width=lw)
-                curve8 = pg.PlotCurveItem(x, y5, name='Group Temperature')
-                curve8.setPen(color=(0xbf, 0x26, 0x85), width=lw)
-                self.plot1.setRange(yRange=[0, 12])
-                self.plot2.setRange(yRange=[0, 10])
-                self.plot1.setRange(xRange=[0, np.max(x)])
-                self.plot2.setRange(xRange=[0, np.max(x)])
-                self.plot3.setRange(xRange=[0, np.max(x)])
-                self.plot1.addItem(curve1)
-                self.plot3.addItem(curve2)
-                self.plot1.addItem(curve4)
-                self.plot2.addItem(curve5)
-                self.plot3.addItem(curve6)
-                self.plot3.addItem(curve7)
-                self.plot3.addItem(curve8)
-'''
+        ### Plot 2 ###
+        c5 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,1], name='Water Temp Cmd')    # pressure commands
+        c6 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,2], name='Group Temp Cmd')    # flow commands
+        c7 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,9], name='Water Temp')          # pressure
+        c8 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,10], name='Heater Temp')             # flow
+        c9 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,11], name='Group Temp')             # flow
+        c5.setPen(color = red1, width = lw, style=QtCore.Qt.DashLine)
+        c6.setPen(color = orange1, width = lw, style=QtCore.Qt.DashLine)
+        c7.setPen(color = red1, width = lw)
+        c8.setPen(color = orange2, width = lw)
+        c9.setPen(color = orange1, width = lw)
+        self.plot3.addItem(c5)
+        self.plot3.addItem(c6)
+        self.plot3.addItem(c7)
+        self.plot3.addItem(c8)
+        self.plot3.addItem(c9)
+
 
 def main():
     app = QtGui.QApplication(sys.argv)

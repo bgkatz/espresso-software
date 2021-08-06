@@ -142,9 +142,9 @@ class fakeEspressoMachine(espressoMachine):
         self.comm = False
         self.t_sample = 0
     def sample(self):
-        alpha = .03
-        alpha2 = .01
-        alpha3 = .1
+        alpha = .1
+        alpha2 = .06
+        alpha3 = .2
         r = .2
         self.t_sample = time.time()
         dt = self.t_sample - self.state.state_vec[0]

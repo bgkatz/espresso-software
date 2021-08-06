@@ -45,7 +45,7 @@ class Ui_EspressoGUI(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.verticalWidget.sizePolicy().hasHeightForWidth())
         self.verticalWidget.setSizePolicy(sizePolicy)
-        self.verticalWidget.setMaximumSize(QtCore.QSize(220, 16777215))
+        self.verticalWidget.setMaximumSize(QtCore.QSize(350, 16777215))
         self.verticalWidget.setObjectName("verticalWidget")
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.verticalWidget)
         self.verticalLayout_2.setSizeConstraint(QtWidgets.QLayout.SetMinimumSize)
@@ -64,6 +64,19 @@ class Ui_EspressoGUI(object):
         self.flushButton.setCheckable(True)
         self.flushButton.setObjectName("flushButton")
         self.verticalLayout_2.addWidget(self.flushButton)
+        self.steamButton = QtWidgets.QPushButton(self.verticalWidget)
+        self.steamButton.setMinimumSize(QtCore.QSize(0, 75))
+        font = QtGui.QFont()
+        font.setPointSize(20)
+        self.steamButton.setFont(font)
+        self.steamButton.setStyleSheet("QPushButton{\n"
+"border-style: solid;\n"
+"border-color: #343434;\n"
+"border-width: 5px;\n"
+"border-radius: 10px;\n"
+"}")
+        self.steamButton.setObjectName("steamButton")
+        self.verticalLayout_2.addWidget(self.steamButton)
         self.manualButton = QtWidgets.QPushButton(self.verticalWidget)
         self.manualButton.setMinimumSize(QtCore.QSize(0, 75))
         font = QtGui.QFont()
@@ -78,27 +91,13 @@ class Ui_EspressoGUI(object):
         self.manualButton.setCheckable(True)
         self.manualButton.setObjectName("manualButton")
         self.verticalLayout_2.addWidget(self.manualButton)
-        self.trajButton = QtWidgets.QPushButton(self.verticalWidget)
-        self.trajButton.setMinimumSize(QtCore.QSize(0, 75))
-        font = QtGui.QFont()
-        font.setPointSize(20)
-        self.trajButton.setFont(font)
-        self.trajButton.setStyleSheet("QPushButton{\n"
-"border-style: solid;\n"
-"border-color: #343434;\n"
-"border-width: 5px;\n"
-"border-radius: 10px;\n"
-"}")
-        self.trajButton.setCheckable(True)
-        self.trajButton.setObjectName("trajButton")
-        self.verticalLayout_2.addWidget(self.trajButton)
-        self.trajList = QtWidgets.QListWidget(self.verticalWidget)
+        self.modeList = QtWidgets.QListWidget(self.verticalWidget)
         font = QtGui.QFont()
         font.setFamily("MS Shell Dlg 2")
         font.setPointSize(20)
-        self.trajList.setFont(font)
-        self.trajList.setObjectName("trajList")
-        self.verticalLayout_2.addWidget(self.trajList)
+        self.modeList.setFont(font)
+        self.modeList.setObjectName("modeList")
+        self.verticalLayout_2.addWidget(self.modeList)
         self.saveButton = QtWidgets.QPushButton(self.verticalWidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -152,52 +151,57 @@ class Ui_EspressoGUI(object):
         self.gridLayout = QtWidgets.QGridLayout()
         self.gridLayout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
         self.gridLayout.setObjectName("gridLayout")
-        self.startButton = QtWidgets.QPushButton(self.verticalWidget1)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.startButton.sizePolicy().hasHeightForWidth())
-        self.startButton.setSizePolicy(sizePolicy)
-        self.startButton.setMinimumSize(QtCore.QSize(180, 180))
-        font = QtGui.QFont()
-        font.setPointSize(20)
-        self.startButton.setFont(font)
-        self.startButton.setStyleSheet("QPushButton{\n"
-"border-style: solid;\n"
-"border-color: #343434;\n"
-"border-width: 5px;\n"
-"border-radius: 40px;\n"
-"}")
-        self.startButton.setCheckable(True)
-        self.startButton.setObjectName("startButton")
-        self.gridLayout.addWidget(self.startButton, 1, 0, 1, 1)
-        self.pressureText = QtWidgets.QLabel(self.verticalWidget1)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.pressureText.sizePolicy().hasHeightForWidth())
-        self.pressureText.setSizePolicy(sizePolicy)
-        font = QtGui.QFont()
-        font.setPointSize(20)
-        self.pressureText.setFont(font)
-        self.pressureText.setLayoutDirection(QtCore.Qt.LayoutDirection.RightToLeft)
-        self.pressureText.setObjectName("pressureText")
-        self.gridLayout.addWidget(self.pressureText, 4, 0, 1, 1)
         self.tempBox = QtWidgets.QDoubleSpinBox(self.verticalWidget1)
-        self.tempBox.setMinimumSize(QtCore.QSize(150, 100))
+        self.tempBox.setMinimumSize(QtCore.QSize(150, 120))
         font = QtGui.QFont()
         font.setPointSize(20)
         self.tempBox.setFont(font)
         self.tempBox.setMaximum(100.0)
         self.tempBox.setObjectName("tempBox")
-        self.gridLayout.addWidget(self.tempBox, 5, 0, 1, 1)
-        self.pressureSlider = QtWidgets.QSlider(self.verticalWidget1)
+        self.gridLayout.addWidget(self.tempBox, 6, 0, 1, 1)
+        self.gridLayout_2 = QtWidgets.QGridLayout()
+        self.gridLayout_2.setObjectName("gridLayout_2")
+        self.presPushButton = QtWidgets.QPushButton(self.verticalWidget1)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.presPushButton.sizePolicy().hasHeightForWidth())
+        self.presPushButton.setSizePolicy(sizePolicy)
+        self.presPushButton.setMinimumSize(QtCore.QSize(100, 100))
+        font = QtGui.QFont()
+        font.setPointSize(16)
+        self.presPushButton.setFont(font)
+        self.presPushButton.setStyleSheet("QPushButton{\n"
+"border-style: solid;\n"
+"border-color: #343434;\n"
+"border-width: 5px;\n"
+"border-radius: 20px;\n"
+"}")
+        self.presPushButton.setCheckable(True)
+        self.presPushButton.setObjectName("presPushButton")
+        self.gridLayout_2.addWidget(self.presPushButton, 2, 0, 1, 1)
+        self.flowPushButton = QtWidgets.QPushButton(self.verticalWidget1)
+        self.flowPushButton.setMinimumSize(QtCore.QSize(100, 100))
+        font = QtGui.QFont()
+        font.setPointSize(16)
+        self.flowPushButton.setFont(font)
+        self.flowPushButton.setStyleSheet("QPushButton{\n"
+"border-style: solid;\n"
+"border-color: #343434;\n"
+"border-width: 5px;\n"
+"border-radius: 20px;\n"
+"}")
+        self.flowPushButton.setCheckable(True)
+        self.flowPushButton.setObjectName("flowPushButton")
+        self.gridLayout_2.addWidget(self.flowPushButton, 2, 1, 1, 1)
+        self.gridLayout.addLayout(self.gridLayout_2, 2, 0, 1, 1)
+        self.pressureSlider = QtWidgets.QSlider(self.verticalWidget1)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.pressureSlider.sizePolicy().hasHeightForWidth())
         self.pressureSlider.setSizePolicy(sizePolicy)
-        self.pressureSlider.setMinimumSize(QtCore.QSize(150, 500))
+        self.pressureSlider.setMinimumSize(QtCore.QSize(0, 500))
         self.pressureSlider.setLayoutDirection(QtCore.Qt.LayoutDirection.RightToLeft)
         self.pressureSlider.setAutoFillBackground(False)
         self.pressureSlider.setStyleSheet("\n"
@@ -224,43 +228,39 @@ class Ui_EspressoGUI(object):
         self.pressureSlider.setTickPosition(QtWidgets.QSlider.TickPosition.TicksAbove)
         self.pressureSlider.setTickInterval(10)
         self.pressureSlider.setObjectName("pressureSlider")
-        self.gridLayout.addWidget(self.pressureSlider, 3, 0, 1, 1)
-        self.gridLayout_2 = QtWidgets.QGridLayout()
-        self.gridLayout_2.setObjectName("gridLayout_2")
-        self.presPushButton = QtWidgets.QPushButton(self.verticalWidget1)
+        self.gridLayout.addWidget(self.pressureSlider, 4, 0, 1, 1)
+        self.pressureText = QtWidgets.QLabel(self.verticalWidget1)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.presPushButton.sizePolicy().hasHeightForWidth())
-        self.presPushButton.setSizePolicy(sizePolicy)
-        self.presPushButton.setMinimumSize(QtCore.QSize(120, 100))
+        sizePolicy.setHeightForWidth(self.pressureText.sizePolicy().hasHeightForWidth())
+        self.pressureText.setSizePolicy(sizePolicy)
         font = QtGui.QFont()
-        font.setPointSize(16)
-        self.presPushButton.setFont(font)
-        self.presPushButton.setStyleSheet("QPushButton{\n"
+        font.setPointSize(20)
+        self.pressureText.setFont(font)
+        self.pressureText.setLayoutDirection(QtCore.Qt.LayoutDirection.RightToLeft)
+        self.pressureText.setObjectName("pressureText")
+        self.gridLayout.addWidget(self.pressureText, 5, 0, 1, 1)
+        self.startButton = QtWidgets.QPushButton(self.verticalWidget1)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.startButton.sizePolicy().hasHeightForWidth())
+        self.startButton.setSizePolicy(sizePolicy)
+        self.startButton.setMinimumSize(QtCore.QSize(220, 180))
+        font = QtGui.QFont()
+        font.setPointSize(20)
+        self.startButton.setFont(font)
+        self.startButton.setLayoutDirection(QtCore.Qt.LayoutDirection.LeftToRight)
+        self.startButton.setStyleSheet("QPushButton{\n"
 "border-style: solid;\n"
 "border-color: #343434;\n"
 "border-width: 5px;\n"
-"border-radius: 20px;\n"
+"border-radius: 40px;\n"
 "}")
-        self.presPushButton.setCheckable(True)
-        self.presPushButton.setObjectName("presPushButton")
-        self.gridLayout_2.addWidget(self.presPushButton, 0, 0, 1, 1)
-        self.flowPushButton = QtWidgets.QPushButton(self.verticalWidget1)
-        self.flowPushButton.setMinimumSize(QtCore.QSize(100, 100))
-        font = QtGui.QFont()
-        font.setPointSize(16)
-        self.flowPushButton.setFont(font)
-        self.flowPushButton.setStyleSheet("QPushButton{\n"
-"border-style: solid;\n"
-"border-color: #343434;\n"
-"border-width: 5px;\n"
-"border-radius: 20px;\n"
-"}")
-        self.flowPushButton.setCheckable(True)
-        self.flowPushButton.setObjectName("flowPushButton")
-        self.gridLayout_2.addWidget(self.flowPushButton, 0, 1, 1, 1)
-        self.gridLayout.addLayout(self.gridLayout_2, 2, 0, 1, 1)
+        self.startButton.setCheckable(True)
+        self.startButton.setObjectName("startButton")
+        self.gridLayout.addWidget(self.startButton, 0, 0, 1, 1)
         self.PlotLayout.addLayout(self.gridLayout)
         self.horizontalLayout.addWidget(self.verticalWidget1)
         EspressoGUI.setCentralWidget(self.centralwidget)
@@ -275,13 +275,13 @@ class Ui_EspressoGUI(object):
         _translate = QtCore.QCoreApplication.translate
         EspressoGUI.setWindowTitle(_translate("EspressoGUI", "Plotter"))
         self.flushButton.setText(_translate("EspressoGUI", "Flush"))
+        self.steamButton.setText(_translate("EspressoGUI", "Steam"))
         self.manualButton.setText(_translate("EspressoGUI", "Manual"))
-        self.trajButton.setText(_translate("EspressoGUI", "Trajectory"))
         self.saveButton.setText(_translate("EspressoGUI", "Save Plot To CSV"))
-        self.startButton.setText(_translate("EspressoGUI", "Start"))
-        self.pressureText.setText(_translate("EspressoGUI", "0.0"))
         self.presPushButton.setText(_translate("EspressoGUI", "Pressure"))
         self.flowPushButton.setText(_translate("EspressoGUI", "Flow"))
+        self.pressureText.setText(_translate("EspressoGUI", "0.0"))
+        self.startButton.setText(_translate("EspressoGUI", "Start"))
 
 
 if __name__ == "__main__":

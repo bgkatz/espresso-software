@@ -8,6 +8,8 @@
 
 from espressoMachine import *
 
+
+
 class displayData():
     def __init__(self):
         pass
@@ -15,7 +17,7 @@ class displayData():
 class idleMode():
     # Idle mode does nothing #
     def __init__(self):
-        pass
+        self.title = 'Idle'
     def run(self, state, cmds):
         cmds.cmd_vec = np.zeros(cmds.cmd_vec.shape)
         #print('running idle mode')
@@ -50,6 +52,7 @@ class manualMode():
 class nineBarShot():
     # Standard 9-bar shot with 1-bar pre-infusion
     def __init__(self):
+        self.title = 'Nine Bar - Flow Preinfusion'
         self.preheat_done = False
         self.pi_done = False
         self.shot_done = False
@@ -63,7 +66,7 @@ class nineBarShot():
         self.pi_flow = 0.0
         self.pi_end_pressure = 4.0
         self.shot_pressure = 9.0
-        self.shot_weight = 32.0
+        self.shot_weight = 6.0
         self.temp_tol = .5
 
     def run(self, state, cmds):
@@ -94,9 +97,9 @@ class nineBarShot():
             cmds.setFlowDir(2)
         else:
             cmds.setFlowDir(1)                     # flow to group
-        cmds.setPumpCmdType(2)                 # pump in pressure control
+            self.pi_flow += .1
+        cmds.setPumpCmdType(2)                 # pump in flow control
         cmds.setPumpCmd(self.pi_flow)      # preinfusion flow
-        self.pi_flow += .01
         #if(state.time() > (self.t_start + self.t_pi)):
         cmds.tare(1)
         if(state.pressure() >= self.pi_end_pressure):
@@ -119,3 +122,5 @@ class nineBarShot():
         time.sleep(1)
         cmds.setFlowDir(0)
         self.done = True
+
+custom_modes = (nineBarShot(), idleMode())
