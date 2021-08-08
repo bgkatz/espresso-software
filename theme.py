@@ -23,3 +23,6 @@ white2 = (247, 247, 247)
 white3 = (216, 222, 233)
 
 lw = 10
+
+off_button_style = 'QPushButton{\nborder-style: solid;\nborder-color: #343434;\nborder-width: 5px;\nborder-radius: 20px;\n background-color : #FFFFFF;}'
+on_button_style = 'QPushButton{\nborder-style: solid;\nborder-color: #343434;\nborder-width: 5px;\nborder-radius: 20px;\n background-color : #7AB7E0 ;}'

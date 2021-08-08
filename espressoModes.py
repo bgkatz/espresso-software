@@ -18,36 +18,48 @@ class idleMode():
     # Idle mode does nothing #
     def __init__(self):
         self.title = 'Idle'
-    def run(self, state, cmds):
-        cmds.cmd_vec = np.zeros(cmds.cmd_vec.shape)
+    def run(self, em):
+        em.cmd.cmd_vec = np.zeros(em.cmd.cmd_vec.shape)
         #print('running idle mode')
+    def exit(self, em):
+        return True
 
 class preheatMode():
     # Cycles water through tank and heats #
     def __init__(self):
-        pass
-    def run(self, state, cmds, waterTempCmd=93.0, groupTempCmd=93.0, flowCmd=2.0):
-        cmds.setFlowDir(0)          # flow to tank
-        cmds.setPumpCmdTypoe(2)     # flow control
-        cmds.setPumpCmd(flowCmd) 
-        cmds.setWaterTempCmd(waterTempCmd)
-        cmds.setGroupTempCMd(groupTempCmd)
+        self.title = 'Preheat'
+    def run(self, em, waterTempCmd=93.0, groupTempCmd=93.0, flowCmd=2.0):
+        em.cmd.setFlowDir(0)          # flow to tank
+        em.cmd.setPumpCmdType(2)     # flow control
+        em.cmd.setPumpCmd(flowCmd) 
+        em.cmd.setWaterTempCmd(waterTempCmd)
+        em.cmd.setGroupTempCmd(groupTempCmd)
+    def exit(self, em):
+        em.cmd.cmd_vec = np.zeros(em.cmd.cmd_vec.shape)
+        return True
 
 class flushMode():
     # Flushes water through group #
     def __init__(self):
-        pass
-    def run(self, state, cmds, flowCmd = 4.0):
-        cmds.setFlowDir(1)      # flow to group
-        cmds.setPumpCmdType(2)  # flow control
-        cmds.setPumpCmd(flowCmd)
+        self.title = 'Flush'
+    def run(self, em, flowCmd = 4.0):
+        em.cmd.setFlowDir(1)      # flow to group
+        em.cmd.setPumpCmdType(2)  # flow control
+        em.cmd.setPumpCmd(flowCmd)
+    def exit(self, em):
+        em.cmd.cmd_vec = np.zeros(em.cmd.cmd_vec.shape)
+        return True
 
 class manualMode():
     # Manual control from GUI #
     def __init__(self):
-        self.cmds = espressoMachineCommands()
-    def run(self, state, cmds):
-        cmds = self.cmds
+        self.title = 'Manual'
+        self.cmds = esspressoMachineCommands()
+    def run(self, em):
+        em.cmd = self.cmds
+    def exit(self, em):
+        em.cmd.cmd_vec = np.zeros(em.cmd.cmd_vec.shape)
+        return True
 
 class nineBarShot():
     # Standard 9-bar shot with 1-bar pre-infusion
@@ -69,58 +81,66 @@ class nineBarShot():
         self.shot_weight = 6.0
         self.temp_tol = .5
 
-    def run(self, state, cmds):
+    def run(self, em):
         if(not self.preheat_done):
-            self.preheat(state, cmds)
+            self.preheat(em)
         elif(not self.pi_done):
-            self.preinfuse(state, cmds)
+            self.preinfuse(em)
         elif(not self.shot_done):
-            self.shot(state, cmds)
+            self.shot(em)
+        elif(not self.done):
+            self.end(em)
         else:
-            self.end(state, cmds)
+            pass
 
-    def preheat(self, state, cmds):
-        print('preheating.  wt: ', state.waterTemp(), ' gt ', state.groupTemp())
-        cmds.setFlowDir(0)                     # flow to tank during preheat
-        cmds.setPumpCmdType(2)                 # pump in flow control
-        cmds.setPumpCmd(self.preheat_flow)     # preheat flow
-        cmds.setWaterTempCmd(self.water_temp)  # heat water
-        cmds.setGroupTempCmd(self.group_temp)  # heat group 
-        cmds.tare(1)
-        if ((np.abs(state.waterTemp() - self.water_temp)<self.temp_tol) and (np.abs(state.groupTemp() - self.group_temp)<self.temp_tol)):
-            self.t_start = state.time()
+    def exit(self, em):
+        em.cmd.cmd_vec = np.zeros(em.cmd.cmd_vec.shape)
+        return True
+
+    def preheat(self, em):
+        em.clearLog()
+        print('preheating.  wt: ', em.state.waterTemp(), ' gt ', em.state.groupTemp())
+        em.cmd.setFlowDir(0)                     # flow to tank during preheat
+        em.cmd.setPumpCmdType(2)                 # pump in flow control
+        em.cmd.setPumpCmd(self.preheat_flow)     # preheat flow
+        em.cmd.setWaterTempCmd(self.water_temp)  # heat water
+        em.cmd.setGroupTempCmd(self.group_temp)  # heat group 
+        em.cmd.tare(1)
+        if ((np.abs(em.state.waterTemp() - self.water_temp)<self.temp_tol) and (np.abs(em.state.groupTemp() - self.group_temp)<self.temp_tol)):
+            self.t_start = em.state.time()
             self.preheat_done = True
 
-    def preinfuse(self, state, cmds):
-        print('preinfusion.  flow: ', state.flow(), ' pr ', state.pressure())
-        if((state.time()-self.t_start)<1.0):
-            cmds.setFlowDir(2)
+    def preinfuse(self, em):
+        print('preinfusion.  flow: ', em.state.flow(), ' pr ', em.state.pressure())
+        if((em.state.time()-self.t_start)<1.0):
+            em.cmd.setFlowDir(2)
         else:
-            cmds.setFlowDir(1)                     # flow to group
+            em.log_enabled = True
+            em.cmd.setFlowDir(1)                     # flow to group
             self.pi_flow += .1
-        cmds.setPumpCmdType(2)                 # pump in flow control
-        cmds.setPumpCmd(self.pi_flow)      # preinfusion flow
+        em.cmd.setPumpCmdType(2)                 # pump in flow control
+        em.cmd.setPumpCmd(self.pi_flow)      # preinfusion flow
         #if(state.time() > (self.t_start + self.t_pi)):
-        cmds.tare(1)
-        if(state.pressure() >= self.pi_end_pressure):
-            cmds.tare(1)                       # tare scale after preinfusion
-            time.sleep(.2)
+        em.cmd.tare(1)
+        if(em.state.pressure() >= self.pi_end_pressure):
+            em.cmd.tare(1)                       # tare scale after preinfusion
             self.pi_done = True
         
-    def shot(self, state, cmds):
-        print('shot.  flow: ', state.flow(), ' pr ', state.pressure(), ' w ', state.weight())
-        cmds.setPumpCmdType(1)
-        cmds.setPumpCmd(self.shot_pressure)    # shot pressure
-        if(state.weight()>self.shot_weight):
+    def shot(self, em):
+        print('shot.  flow: ', em.state.flow(), ' pr ', em.state.pressure(), ' w ', em.state.weight())
+        em.cmd.setPumpCmdType(1)
+        em.cmd.setPumpCmd(self.shot_pressure)    # shot pressure
+        if(em.state.weight()>self.shot_weight):
             self.shot_done = True
 
-    def end(self, state, cmds):
+    def end(self, em):
         print('done')
-        cmds.setPumpCmd(0)                     # zero pressure command
-        time.sleep(1)
-        cmds.setFlowDir(2)                     # Bleed group to drip tray
-        time.sleep(1)
-        cmds.setFlowDir(0)
+        em.log_enabled = False
+        em.cmd.setPumpCmd(0)                     # zero pressure command
+        time.sleep(.2)
+        em.cmd.setFlowDir(2)                     # Bleed group to drip tray
+        time.sleep(.5)
+        em.cmd.setFlowDir(0)
         self.done = True
 
-custom_modes = (nineBarShot(), idleMode())
+

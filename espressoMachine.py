@@ -157,6 +157,7 @@ class fakeEspressoMachine(espressoMachine):
 
         if(self.cmd.cmd_vec[3] == 0):   # pump off
             self.state.state_vec[1] = 0
+            self.state.state_vec[2] = 0
         elif(self.cmd.cmd_vec[3] ==1 ): # pressure control
             self.state.state_vec[1] = (1-alpha3)*self.state.state_vec[1] + alpha3*self.cmd.cmd_vec[0]
             self.state.state_vec[2] = self.state.state_vec[1]/r
