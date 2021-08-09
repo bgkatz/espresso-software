@@ -35,7 +35,7 @@ class espressoMachineState():
     # Sensor measurements and estimates #
 
     def __init__(self):
-        self.state_vec = np.zeros([10])
+        self.state_vec = np.zeros([12])
     def time(self):
         return self.state_vec[0]
     def pressure(self):
@@ -56,6 +56,10 @@ class espressoMachineState():
         return self.state_vec[8]
     def weight(self):
         return self.state_vec[9]
+    def groupHeaterPower(self):
+        return self.state_vec[10]
+    def waterHeaterPower(self):
+        return self.state_vec[11]
 
 class esspressoMachineCommands():
     # Commands #
@@ -146,6 +150,10 @@ class fakeEspressoMachine(espressoMachine):
         alpha2 = .06
         alpha3 = .2
         r = .2
+        tm_g = 200
+        tm_h = 200
+        old_group_temp = self.state.state_vec[4]
+        old_heater_temp = self.state.state_vec[4]
         self.t_sample = time.time()
         dt = self.t_sample - self.state.state_vec[0]
         self.state.state_vec[0] = self.t_sample
@@ -164,13 +172,15 @@ class fakeEspressoMachine(espressoMachine):
         elif(self.cmd.cmd_vec[3] == 2): # flow control
             self.state.state_vec[2] = (1-alpha3)*self.state.state_vec[2] + alpha3*self.cmd.cmd_vec[0]
             self.state.state_vec[1] = self.state.state_vec[2]*r
-        self.state.state_vec[3] = (1-alpha2)*self.state.state_vec[3] + alpha2*self.cmd.cmd_vec[1]
-        self.state.state_vec[4] = (1-alpha)*self.state.state_vec[4] + alpha*self.cmd.cmd_vec[1]
-        self.state.state_vec[5] = (1-alpha)*self.state.state_vec[5] + alpha*self.cmd.cmd_vec[2]
+        self.state.state_vec[3] = (1-alpha2)*self.state.state_vec[3] + alpha2*self.cmd.cmd_vec[1]   # water temp
+        self.state.state_vec[4] = (1-alpha)*self.state.state_vec[4] + alpha*self.cmd.cmd_vec[1]     # heater temp
+        self.state.state_vec[5] = (1-alpha)*self.state.state_vec[5] + alpha*self.cmd.cmd_vec[2]     # group temp
         self.state.state_vec[6] = self.state.state_vec[2]*2*np.pi/.33
         self.state.state_vec[7] = self.state.state_vec[1]*.33/(10*2*np.pi)
         self.state.state_vec[8] = self.state.state_vec[7] + 1e-3*(np.random.rand()-.5)
         self.state.state_vec[9] = self.state.state_vec[9] + dt*self.state.state_vec[2]
+        self.state.state_vec[10] = (self.state.state_vec[5] - old_group_temp)*tm_g/dt + .02*self.state.state_vec[5]
+        self.state.state_vec[11] = self.state.state_vec[2]*self.state.state_vec[3]*4.2 + (self.state.state_vec[4] - old_heater_temp)*tm_h/dt
 
         if(self.cmd.cmd_vec[5]):    # Tare
             self.state.state_vec[9] = 0

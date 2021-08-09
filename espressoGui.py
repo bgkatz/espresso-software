@@ -49,6 +49,7 @@ class MainWindow(Ui_EspressoGUI):
             time.sleep(.1)
         #self.machine.log_enabled = False
         '''
+        self.textLog.setReadOnly(True)
 
         # Add Plots #
         self.plot1 = pg.PlotWidget(background=bg_color, title='Pressure/Flow')
@@ -107,10 +108,10 @@ class MainWindow(Ui_EspressoGUI):
 
     def startPressed(self):
         if(self.fsm.mode_running):
-            print('stop pressed')
+            self.textLog.appendPlainText('stop pressed')
             self.fsm.mode_running = False 
         else:
-            print('start pressed')
+            self.textLog.appendPlainText('start pressed')
             self.fsm.mode_running = True 
         self.updateButtons()
 
@@ -125,17 +126,17 @@ class MainWindow(Ui_EspressoGUI):
         self.updateButtons()
 
     def manualPressed(self):
-        print('manual pressed')
+        self.textLog.appendPlainText('manual pressed')
         self.fsm.transition(self.machine, manualMode)
         self.updateButtons()
 
     def flushPressed(self):
-        print('flush pressed')
+        self.textLog.appendPlainText('flush pressed')
         self.fsm.transition(self.machine, flushMode)
         self.updateButtons()
 
     def steamPressed(self):
-        print('steam pressed')
+        self.textLog.appendPlainText('steam pressed')
 
     def pressurePressed(self):
         pass#if(self.fsm.mode.name == 'MANUAL'):
@@ -146,13 +147,13 @@ class MainWindow(Ui_EspressoGUI):
             #self.fsm.mode.pumpCmdType = 'FLOW'
 
     def saveLogPressed(self):
-        print('save pressed')
+        self.textLog.appendPlainText('save pressed')
         self.machine.saveLog()
 
     def tarePressed(self):
-        print('taring')
+        self.textLog.appendPlainText('taring')
         self.machine.cmd.tare(1)
-        
+
     def pressureSliderChanged(self):
         pass
 
@@ -160,7 +161,7 @@ class MainWindow(Ui_EspressoGUI):
         pass
 
     def modeListPressed(self, item):
-        print(item.text())
+        self.textLog.appendPlainText(item.text())
         self.fsm.transition(self.machine, self.fsm.mode_list[item.text()])
         self.updateButtons()
         #print(item.text())
@@ -204,9 +205,11 @@ class MainWindow(Ui_EspressoGUI):
         self.wtLabel.setText('Water Temp:\n%02.2f'%self.machine.state.waterTemp())
         self.gtLabel.setText('Group Temp:\n%02.2f'%self.machine.state.groupTemp())
         self.htLabel.setText('Heater Temp:\n%02.2f'%self.machine.state.heaterTemp())
-        self.psLabel.setText('Pump Speed:\n%02.2f'%(self.machine.state.pumpVel()*60/(2*np.pi)))
-        self.ptLabel.setText('Pump Torque:\n%02.2f'%self.machine.state.pumpTorque())
+        self.psLabel.setText('Pump Speed:\n%03.1f'%(self.machine.state.pumpVel()*60/(2*np.pi)))
+        self.ptLabel.setText('Pump Torque:\n%02.5f'%self.machine.state.pumpTorque())
         self.wLabel.setText('Weight:\n%02.2f'%self.machine.state.weight())
+        self.whpLabel.setText('WH Power:\n%03.1f'%self.machine.state.waterHeaterPower())
+        self.ghpLabel.setText('WH Power:\n%03.1f'%self.machine.state.groupHeaterPower())
 
         self.plot1.clear()
         #self.plot2.clear()
@@ -215,11 +218,14 @@ class MainWindow(Ui_EspressoGUI):
         maxpoints = 500
 
         if(len(self.machine.log.shape)>1):
+
             ### Plot 1 ###
-            ind_p = self.machine.log[:,3] == 1      # log points where command type is pressure
-            ind_f = self.machine.log[:,3] == 2      # log points where command type is flow
-            c1 = pg.PlotCurveItem(self.machine.log[ind_p,6], self.machine.log[ind_p,0], name='Pressure Cmd')    # pressure commands
-            c2 = pg.PlotCurveItem(self.machine.log[ind_f,6], self.machine.log[ind_f,0], name='Flow Cmd')        # flow commands
+            ind_p = np.nonzero(self.machine.log[:,3] == 1)      # log points where command type is pressure
+            ind_f = np.nonzero(self.machine.log[:,3] == 2)      # log points where command type is flow
+            c1 = pg.PlotCurveItem(self.machine.log[ind_p,6].flatten(), self.machine.log[ind_p,0].flatten(), name='Pressure Cmd')    # pressure commands
+            #print(self.machine.log[ind_f,6].shape)
+            #print(self.machine.log[ind_f,0].shape)
+            c2 = pg.PlotCurveItem(self.machine.log[ind_f,6].flatten(), self.machine.log[ind_f,0].flatten(), name='Flow Cmd')        # flow commands
             c3 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,7], name='Pressure')                # pressure
             c4 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,8], name='Flow')                    # flow
             c1.setPen(color = blue1, width = lw, style=QtCore.Qt.DashLine)
@@ -230,6 +236,7 @@ class MainWindow(Ui_EspressoGUI):
             self.plot1.addItem(c2)
             self.plot1.addItem(c3)
             self.plot1.addItem(c4)
+
 
             ### Plot 2 ###
             c5 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,1], name='Water Temp Cmd')    # pressure commands

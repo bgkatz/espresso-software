@@ -78,7 +78,7 @@ class nineBarShot():
         self.pi_flow = 0.0
         self.pi_end_pressure = 4.0
         self.shot_pressure = 9.0
-        self.shot_weight = 6.0
+        self.shot_weight = 32.0
         self.temp_tol = .5
 
     def run(self, em):
@@ -117,7 +117,7 @@ class nineBarShot():
         else:
             em.log_enabled = True
             em.cmd.setFlowDir(1)                     # flow to group
-            self.pi_flow += .1
+            self.pi_flow += .01
         em.cmd.setPumpCmdType(2)                 # pump in flow control
         em.cmd.setPumpCmd(self.pi_flow)      # preinfusion flow
         #if(state.time() > (self.t_start + self.t_pi)):
