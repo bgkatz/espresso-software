@@ -9,6 +9,7 @@ import sys
 import time
 import struct
 import time
+import threading
 
 from espressoMachine import *
 from espressoModes import *
@@ -36,7 +37,8 @@ class MainWindow(Ui_EspressoGUI):
         self.mw = QtGui.QMainWindow()
         self.setupUi(self.mw)
 
-        self.machine = fakeEspressoMachine()
+        self.machine = espressoMachine()
+        #self.machine = fakeEspressoMachine()
         self.machine.startIO()
         self.fsm = espressoFSM()
 
@@ -69,6 +71,10 @@ class MainWindow(Ui_EspressoGUI):
         self.plot3.addLegend()
 
         # Add plotting to a thread #
+        #self.plot_thread = threading.Thread(target = self.updateGraphics)
+        #self.plot_thread.daemon = True
+        #self.plot_thread.start()
+
 
         # Main UI Timer #
         self.runTimer = QtCore.QTimer()
@@ -97,8 +103,10 @@ class MainWindow(Ui_EspressoGUI):
 
         self.t_last = time.time()
 
+        
+
     def run(self):
-        self.fsm.run(self.machine)
+        self.fsm.run(self.machine, False)
         self.updateGraphics()
 
         t_now = time.time()
@@ -112,6 +120,7 @@ class MainWindow(Ui_EspressoGUI):
             self.fsm.mode_running = False 
         else:
             self.textLog.appendPlainText('start pressed')
+            self.fsm.start_mode()
             self.fsm.mode_running = True 
         self.updateButtons()
 
@@ -198,7 +207,6 @@ class MainWindow(Ui_EspressoGUI):
             self.flushButton.setStyleSheet(on_button_style)
 
     def updateGraphics(self):
-
         ### text ###
         self.pLabel.setText('Pressure:\n%02.2f'%self.machine.state.pressure())
         self.fLabel.setText('Flow:\n%02.2f'%self.machine.state.flow())
@@ -209,7 +217,7 @@ class MainWindow(Ui_EspressoGUI):
         self.ptLabel.setText('Pump Torque:\n%02.5f'%self.machine.state.pumpTorque())
         self.wLabel.setText('Weight:\n%02.2f'%self.machine.state.weight())
         self.whpLabel.setText('WH Power:\n%03.1f'%self.machine.state.waterHeaterPower())
-        self.ghpLabel.setText('WH Power:\n%03.1f'%self.machine.state.groupHeaterPower())
+        self.ghpLabel.setText('GH Power:\n%03.1f'%self.machine.state.groupHeaterPower())
 
         self.plot1.clear()
         #self.plot2.clear()
@@ -219,15 +227,16 @@ class MainWindow(Ui_EspressoGUI):
 
         if(len(self.machine.log.shape)>1):
 
+
             ### Plot 1 ###
             ind_p = np.nonzero(self.machine.log[:,3] == 1)      # log points where command type is pressure
             ind_f = np.nonzero(self.machine.log[:,3] == 2)      # log points where command type is flow
-            c1 = pg.PlotCurveItem(self.machine.log[ind_p,6].flatten(), self.machine.log[ind_p,0].flatten(), name='Pressure Cmd')    # pressure commands
+            c1 = pg.PlotCurveItem(self.machine.log[ind_p,6].flatten(), self.machine.log[ind_p,0].flatten(), name='Pressure Cmd', downsample=100)    # pressure commands
             #print(self.machine.log[ind_f,6].shape)
             #print(self.machine.log[ind_f,0].shape)
-            c2 = pg.PlotCurveItem(self.machine.log[ind_f,6].flatten(), self.machine.log[ind_f,0].flatten(), name='Flow Cmd')        # flow commands
-            c3 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,7], name='Pressure')                # pressure
-            c4 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,8], name='Flow')                    # flow
+            c2 = pg.PlotCurveItem(self.machine.log[ind_f,6].flatten(), self.machine.log[ind_f,0].flatten(), name='Flow Cmd', downsample=100)        # flow commands
+            c3 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,7], name='Pressure', downsample=100)                # pressure
+            c4 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,8], name='Flow', downsample=100)                    # flow
             c1.setPen(color = blue1, width = lw, style=QtCore.Qt.DashLine)
             c2.setPen(color = green1, width = lw, style=QtCore.Qt.DashLine)
             c3.setPen(color = blue7, width = lw)
@@ -239,11 +248,11 @@ class MainWindow(Ui_EspressoGUI):
 
 
             ### Plot 2 ###
-            c5 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,1], name='Water Temp Cmd')    # pressure commands
-            c6 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,2], name='Group Temp Cmd')    # flow commands
-            c7 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,9], name='Water Temp')          # pressure
-            c8 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,10], name='Heater Temp')             # flow
-            c9 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,11], name='Group Temp')             # flow
+            c5 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,1], name='Water Temp Cmd',downsample=100)    # pressure commands
+            c6 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,2], name='Group Temp Cmd',downsample=100)    # flow commands
+            c7 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,9], name='Water Temp',downsample=100)          # pressure
+            c8 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,10], name='Heater Temp',downsample=100)             # flow
+            c9 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,11], name='Group Temp',downsample=100)             # flow
             c5.setPen(color = red1, width = lw, style=QtCore.Qt.DashLine)
             c6.setPen(color = orange1, width = lw, style=QtCore.Qt.DashLine)
             c7.setPen(color = red1, width = lw)
@@ -255,6 +264,10 @@ class MainWindow(Ui_EspressoGUI):
             self.plot3.addItem(c8)
             self.plot3.addItem(c9)
 
+
+class userInput():
+    def __init__(self):
+        pass
 
 def main():
     app = QtGui.QApplication(sys.argv)

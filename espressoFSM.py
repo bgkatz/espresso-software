@@ -19,10 +19,16 @@ class espressoFSM():
         self.active_mode = idleMode()
         self.mode_running = False
 
-    def run(self, machine):
+    def run(self, machine, user_input):
         if(self.mode_running):
-            self.active_mode.run(machine)
+            self.active_mode.run(machine, user_input)
+        else:
+            self.active_mode.stop(machine)
+
             #time.sleep(.1)
+            
+    def start_mode(self):
+        self.active_mode.start()
     
     def transition(self, machine, nextMode):
         print(nextMode)

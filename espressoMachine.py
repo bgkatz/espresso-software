@@ -108,7 +108,7 @@ class espressoMachine():
     def sample(self):
         # Read data from USB, update machine.state #
         self.comm.read()
-        self.state.state_vec = np.array(self.comm.in_floats[0:10])
+        self.state.state_vec = np.array(self.comm.in_floats[0:12])
 
     def sendCommands(self):
         # Send cmds over USB #
