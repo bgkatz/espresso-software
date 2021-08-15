@@ -643,6 +643,13 @@ border-radius: 10px;
              <pointsize>20</pointsize>
             </font>
            </property>
+           <property name="autoFillBackground">
+            <bool>false</bool>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QDoubleSpinBox::up-button{\nborder-style: solid;\nborder-color: #343434;\nborder-width: 5px;\nborder-radius: 5px;\n}
+QDoubleSpinBox::down-button{\nborder-style: solid;\nborder-color: #343434;\nborder-width: 5px;\nborder-radius: 5px;\n}</string>
+           </property>
            <property name="maximum">
             <double>100.000000000000000</double>
            </property>

@@ -26,6 +26,7 @@ import time
 import numpy as np 
 import scipy
 import threading
+import random
 
 logdir = 'logs/'
 pID = 1155
@@ -145,6 +146,7 @@ class fakeEspressoMachine(espressoMachine):
         espressoMachine.__init__(self)
         self.comm = False
         self.t_sample = 0
+        self.state.state_vec[0] = time.time()
     def sample(self):
         alpha = .1
         alpha2 = .06
@@ -152,7 +154,7 @@ class fakeEspressoMachine(espressoMachine):
         r = .2
         tm_g = 200
         tm_h = 200
-        old_group_temp = self.state.state_vec[4]
+        old_group_temp = self.state.state_vec[5]
         old_heater_temp = self.state.state_vec[4]
         self.t_sample = time.time()
         dt = self.t_sample - self.state.state_vec[0]
@@ -178,9 +180,12 @@ class fakeEspressoMachine(espressoMachine):
         self.state.state_vec[6] = self.state.state_vec[2]*2*np.pi/.33
         self.state.state_vec[7] = self.state.state_vec[1]*.33/(10*2*np.pi)
         self.state.state_vec[8] = self.state.state_vec[7] + 1e-3*(np.random.rand()-.5)
-        self.state.state_vec[9] = self.state.state_vec[9] + dt*self.state.state_vec[2]
+        if(self.cmd.cmd_vec[4]==1):
+            self.state.state_vec[9] = self.state.state_vec[9] + dt*self.state.state_vec[2]
         self.state.state_vec[10] = (self.state.state_vec[5] - old_group_temp)*tm_g/dt + .02*self.state.state_vec[5]
         self.state.state_vec[11] = self.state.state_vec[2]*self.state.state_vec[3]*4.2 + (self.state.state_vec[4] - old_heater_temp)*tm_h/dt
+
+        self.state.state_vec[1:11] += .01*(np.random.standard_normal(self.state.state_vec[1:11].shape))
 
         if(self.cmd.cmd_vec[5]):    # Tare
             self.state.state_vec[9] = 0

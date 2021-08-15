@@ -90,7 +90,7 @@ class nineBarShot():
         self.water_temp = 15.0
         self.group_temp = 60.0
         self.preheat_flow = 2.0
-        self.pi_flow = 1.0
+        self.pi_flow = 0.0
         self.pi_end_pressure = 6.0
         self.shot_pressure = 6.0
         self.shot_weight = 32.0
@@ -112,7 +112,7 @@ class nineBarShot():
 
     def stop(self, em):
         em.cmd.cmd_vec = np.zeros(em.cmd.cmd_vec.shape)
-        self.pi_flow = 1.00
+        self.pi_flow = 0.00
         em.log_enabled = False
 
     def start(self):
@@ -128,7 +128,7 @@ class nineBarShot():
 
     def preheat(self, em):
         em.clearLog()
-        print('preheating.  wt: ', em.state.waterTemp(), ' gt ', em.state.groupTemp())
+        #print('preheating.  wt: ', em.state.waterTemp(), ' gt ', em.state.groupTemp())
         em.cmd.setFlowDir(0)                     # flow to tank during preheat
         em.cmd.setPumpCmdType(2)                 # pump in flow control
         em.cmd.setPumpCmd(self.preheat_flow)     # preheat flow
@@ -140,7 +140,7 @@ class nineBarShot():
             self.preheat_done = True
 
     def preinfuse(self, em):
-        print('preinfusion.  flow: ', em.state.flow(), ' pr ', em.state.pressure())
+        #print('preinfusion.  flow: ', em.state.flow(), ' pr ', em.state.pressure())
         if((em.state.time()-self.t_start)<2.0): # flow to drip tray to purge air
             em.cmd.setFlowDir(2)
         else:
@@ -156,7 +156,7 @@ class nineBarShot():
             self.pi_done = True
         
     def shot(self, em):
-        print('shot.  flow: ', em.state.flow(), ' pr ', em.state.pressure(), ' w ', em.state.weight())
+        #print('shot.  flow: ', em.state.flow(), ' pr ', em.state.pressure(), ' w ', em.state.weight())
         em.cmd.setPumpCmdType(1)
         em.cmd.setPumpCmd(self.shot_pressure)    # shot pressure
         if(em.state.weight()>self.shot_weight):

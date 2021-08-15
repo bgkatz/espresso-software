@@ -34,13 +34,14 @@ t_last = time.time()
 
 class MainWindow(Ui_EspressoGUI):
     def __init__(self):
-        self.mw = QtGui.QMainWindow()
+        self.mw = QtWidgets.QMainWindow()
         self.setupUi(self.mw)
 
-        self.machine = espressoMachine()
-        #self.machine = fakeEspressoMachine()
+        #self.machine = espressoMachine()
+        self.machine = fakeEspressoMachine()
         self.machine.startIO()
-        self.fsm = espressoFSM()
+        self.fsm = espressoFSM(self.machine)
+        self.fsm.start()
 
         '''
         self.mode = nineBarShot()
@@ -70,10 +71,37 @@ class MainWindow(Ui_EspressoGUI):
         #self.plot2.addLegend()
         self.plot3.addLegend()
 
-        # Add plotting to a thread #
-        #self.plot_thread = threading.Thread(target = self.updateGraphics)
-        #self.plot_thread.daemon = True
-        #self.plot_thread.start()
+        self.c1 = pg.PlotCurveItem(name='Pressure Cmd')    # pressure commands
+        self.c2 = pg.PlotCurveItem(name='Flow Cmd')        # flow commands
+        self.c3 = pg.PlotCurveItem(name='Pressure')                # pressure
+        self.c4 = pg.PlotCurveItem(name='Flow')                    # flow
+        self.c1.setPen(color = blue1, width = lw, linestyle='dashed')
+        self.c2.setPen(color = green1, width = lw, linestyle='dashed')
+        self.c3.setPen(color = blue7, width = lw)
+        self.c4.setPen(color = green2, width = lw)
+        self.plot1.addItem(self.c1)
+        self.plot1.addItem(self.c2)
+        self.plot1.addItem(self.c3)
+        self.plot1.addItem(self.c4)
+
+
+        ### Plot 2 ###
+        self.c5 = pg.PlotCurveItem(name='Water Temp Cmd')    # pressure commands
+        self.c6 = pg.PlotCurveItem(name='Group Temp Cmd')    # flow commands
+        self.c7 = pg.PlotCurveItem(name='Water Temp')          # pressure
+        self.c8 = pg.PlotCurveItem(name='Heater Temp')             # flow
+        self.c9 = pg.PlotCurveItem(name='Group Temp')             # flow
+        self.c5.setPen(color = red1, width = lw, linestyle='dashed')
+        self.c6.setPen(color = orange1, width = lw, linestyle='dashed')
+        self.c7.setPen(color = red1, width = lw)
+        self.c8.setPen(color = orange2, width = lw)
+        self.c9.setPen(color = orange1, width = lw)
+        self.plot3.addItem(self.c5)
+        self.plot3.addItem(self.c6)
+        self.plot3.addItem(self.c7)
+        self.plot3.addItem(self.c8)
+        self.plot3.addItem(self.c9)
+
 
 
         # Main UI Timer #
@@ -106,13 +134,13 @@ class MainWindow(Ui_EspressoGUI):
         
 
     def run(self):
-        self.fsm.run(self.machine, False)
+        #self.fsm.run(self.machine, False)
         self.updateGraphics()
 
         t_now = time.time()
         dt = t_now - self.t_last
         self.t_last = t_now
-        #print('FPS: ', 1.0/dt)
+        print('FPS: ', 1.0/dt)
 
     def startPressed(self):
         if(self.fsm.mode_running):
@@ -173,15 +201,10 @@ class MainWindow(Ui_EspressoGUI):
         self.textLog.appendPlainText(item.text())
         self.fsm.transition(self.machine, self.fsm.mode_list[item.text()])
         self.updateButtons()
-        #print(item.text())
-        #if(self.fsm.mode.name == 'TRAJECTORY'):
-        #    if(item.text()=='Flat 9 Bar'):
-        #        self.fsm.mode.traj = nineBarTraj()
-        #    if(item.text()=='Flat 6 Bar'):
-        #        self.fsm.mode.traj = sixBarTraj()
 
     def updateButtons(self):
         ### Buttons ###
+
         if(self.fsm.mode_running):
             self.startButton.setText('Stop')
             self.startButton.setStyleSheet(on_button_style)
@@ -208,6 +231,7 @@ class MainWindow(Ui_EspressoGUI):
 
     def updateGraphics(self):
         ### text ###
+        t1 = time.time()
         self.pLabel.setText('Pressure:\n%02.2f'%self.machine.state.pressure())
         self.fLabel.setText('Flow:\n%02.2f'%self.machine.state.flow())
         self.wtLabel.setText('Water Temp:\n%02.2f'%self.machine.state.waterTemp())
@@ -219,50 +243,56 @@ class MainWindow(Ui_EspressoGUI):
         self.whpLabel.setText('WH Power:\n%03.1f'%self.machine.state.waterHeaterPower())
         self.ghpLabel.setText('GH Power:\n%03.1f'%self.machine.state.groupHeaterPower())
 
-        self.plot1.clear()
-        #self.plot2.clear()
-        self.plot3.clear()
+        t3 = time.time()
+
         
-        maxpoints = 500
+        
+        max_points = 500
 
         if(len(self.machine.log.shape)>1):
 
+            self.plot1.disableAutoRange()
+            self.plot3.disableAutoRange()
+            
+            ### Format plot data ###
+            data = self.machine.log # copy data to avoid it changing size while manipulating
+            data_length = data.shape[0]
+            inds = np.arange(0, data_length, 1)
+            if(data_length > max_points):
+                inds = np.linspace(0, data_length-1, max_points, dtype=int)
+            plot_time = data[inds,6]
+            p0 = data[inds, 3]
+            p1 = data[inds, 0]
+            p3 = data[inds, 7]
+            p4 = data[inds, 8]
+            p5 = data[inds, 1]
+            p6 = data[inds, 2]
+            p7 = data[inds, 9]
+            p8 = data[inds, 10]
+            p9 = data[inds, 11]
+
+            ymax = np.max(data[:,7]) + 1
 
             ### Plot 1 ###
-            ind_p = np.nonzero(self.machine.log[:,3] == 1)      # log points where command type is pressure
-            ind_f = np.nonzero(self.machine.log[:,3] == 2)      # log points where command type is flow
-            c1 = pg.PlotCurveItem(self.machine.log[ind_p,6].flatten(), self.machine.log[ind_p,0].flatten(), name='Pressure Cmd', downsample=100)    # pressure commands
-            #print(self.machine.log[ind_f,6].shape)
-            #print(self.machine.log[ind_f,0].shape)
-            c2 = pg.PlotCurveItem(self.machine.log[ind_f,6].flatten(), self.machine.log[ind_f,0].flatten(), name='Flow Cmd', downsample=100)        # flow commands
-            c3 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,7], name='Pressure', downsample=100)                # pressure
-            c4 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,8], name='Flow', downsample=100)                    # flow
-            c1.setPen(color = blue1, width = lw, style=QtCore.Qt.DashLine)
-            c2.setPen(color = green1, width = lw, style=QtCore.Qt.DashLine)
-            c3.setPen(color = blue7, width = lw)
-            c4.setPen(color = green2, width = lw)
-            self.plot1.addItem(c1)
-            self.plot1.addItem(c2)
-            self.plot1.addItem(c3)
-            self.plot1.addItem(c4)
+            ds = 1
+            ind_p = np.nonzero(p0 == 1)      # log points where command type is pressure
+            ind_f = np.nonzero(p0 == 2)      # log points where command type is flow
+            self.c1.setData(plot_time[ind_p], p1[ind_p])
+            self.c2.setData(plot_time[ind_f], p1[ind_f])
+            self.c3.setData(plot_time, p3)
+            self.c4.setData(plot_time, p4)
+            self.c5.setData(plot_time, p5)
+            self.c6.setData(plot_time, p6)
+            self.c7.setData(plot_time, p7)
+            self.c8.setData(plot_time, p8)
+            self.c9.setData(plot_time, p9)
+            
+            self.plot1.enableAutoRange()
+            self.plot1.setYRange(0, ymax)
+            self.plot3.enableAutoRange()
 
-
-            ### Plot 2 ###
-            c5 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,1], name='Water Temp Cmd',downsample=100)    # pressure commands
-            c6 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,2], name='Group Temp Cmd',downsample=100)    # flow commands
-            c7 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,9], name='Water Temp',downsample=100)          # pressure
-            c8 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,10], name='Heater Temp',downsample=100)             # flow
-            c9 = pg.PlotCurveItem(self.machine.log[:,6], self.machine.log[:,11], name='Group Temp',downsample=100)             # flow
-            c5.setPen(color = red1, width = lw, style=QtCore.Qt.DashLine)
-            c6.setPen(color = orange1, width = lw, style=QtCore.Qt.DashLine)
-            c7.setPen(color = red1, width = lw)
-            c8.setPen(color = orange2, width = lw)
-            c9.setPen(color = orange1, width = lw)
-            self.plot3.addItem(c5)
-            self.plot3.addItem(c6)
-            self.plot3.addItem(c7)
-            self.plot3.addItem(c8)
-            self.plot3.addItem(c9)
+            t2 = time.time()
+            #print('log length: ', len(self.machine.log[:,1]), '  text time: ', t3-t1, ' plot time: ', t2-t1)
 
 
 class userInput():
@@ -270,10 +300,10 @@ class userInput():
         pass
 
 def main():
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     GUI = MainWindow()
     GUI.mw.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 if __name__ == '__main__':
     main()
