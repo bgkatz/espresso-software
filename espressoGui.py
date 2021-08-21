@@ -1,10 +1,11 @@
-#C:\Users\Ben\AppData\Local\Programs\Python\Python39\Scripts\pyuic6.exe -x gui.ui -o gui.py
+#C:\Users\Ben\AppData\Local\Programs\Python\Python39\Scripts\pyuic5.exe -x gui.ui -o gui.py
 
 from gui import *
-from PyQt6 import QtGui, QtCore
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt5 import QtGui, QtCore
+from PyQt5.QtCore import QThread, pyqtSignal
 import pyqtgraph as pg
 import numpy as np
+import scipy.signal as signal
 import sys
 import time
 import struct
@@ -18,19 +19,6 @@ from theme import *
 
 logdir = 'logs/'
 
-
-PLOT_POINTS = 1000
-PLOT_NTH_POINT = 1
-
-
-
-
-tStart = time.time();
-tVec = [0]
-ts = .005;
-
-
-t_last = time.time()
 
 class MainWindow(Ui_EspressoGUI):
     def __init__(self):
@@ -112,15 +100,15 @@ class MainWindow(Ui_EspressoGUI):
         # Connect buttons #
         self.startButton.clicked.connect(self.startPressed)
         self.saveButton.clicked.connect(self.saveLogPressed)
-        self.pressureSlider.valueChanged.connect(self.pressureSliderChanged)
-        self.tempBox.valueChanged.connect(self.tempBoxChanged)
-        self.manualButton.clicked.connect(self.manualPressed)
-        self.flushButton.clicked.connect(self.flushPressed)
-        self.steamButton.clicked.connect(self.steamPressed)
-        self.presPushButton.clicked.connect(self.pressurePressed)
-        self.flowPushButton.clicked.connect(self.flowPressed)
-        self.idleButton.clicked.connect(self.idlePressed)
-        self.preheatButton.clicked.connect(self.preheatPressed)
+        #self.pressureSlider.valueChanged.connect(self.pressureSliderChanged)
+        #self.tempBox.valueChanged.connect(self.tempBoxChanged)
+        #self.manualButton.clicked.connect(self.manualPressed)
+        #self.flushButton.clicked.connect(self.flushPressed)
+        #self.steamButton.clicked.connect(self.steamPressed)
+        #self.presPushButton.clicked.connect(self.pressurePressed)
+        #self.flowPushButton.clicked.connect(self.flowPressed)
+        #self.idleButton.clicked.connect(self.idlePressed)
+        #self.preheatButton.clicked.connect(self.preheatPressed)
         self.tareButton.clicked.connect(self.tarePressed)
         self.modeList.itemClicked.connect(self.modeListPressed)
         self.updateButtons()
@@ -211,15 +199,17 @@ class MainWindow(Ui_EspressoGUI):
         else:
             self.startButton.setText('Start')
             self.startButton.setStyleSheet(off_button_style)
-
+        '''
         self.idleButton.setStyleSheet(off_button_style)    
         self.preheatButton.setStyleSheet(off_button_style)
         self.manualButton.setStyleSheet(off_button_style)
         self.flushButton.setStyleSheet(off_button_style)
         self.steamButton.setStyleSheet(off_button_style)
+        '''
         self.saveButton.setStyleSheet(off_button_style)
         self.tareButton.setStyleSheet(off_button_style)
-
+        
+        '''
         if(self.fsm.active_mode.title == 'Idle'):
             self.idleButton.setStyleSheet(on_button_style)
         elif(self.fsm.active_mode.title == 'Preheat'):
@@ -228,7 +218,7 @@ class MainWindow(Ui_EspressoGUI):
             self.manualButton.setStyleSheet(on_button_style)
         elif(self.fsm.active_mode.title == 'Flush'):
             self.flushButton.setStyleSheet(on_button_style)
-
+        '''
     def updateGraphics(self):
         ### text ###
         t1 = time.time()
@@ -251,8 +241,8 @@ class MainWindow(Ui_EspressoGUI):
 
         if(len(self.machine.log.shape)>1):
 
-            self.plot1.disableAutoRange()
-            self.plot3.disableAutoRange()
+            #self.plot1.disableAutoRange()
+            #self.plot3.disableAutoRange()
             
             ### Format plot data ###
             data = self.machine.log # copy data to avoid it changing size while manipulating
@@ -260,18 +250,21 @@ class MainWindow(Ui_EspressoGUI):
             inds = np.arange(0, data_length, 1)
             if(data_length > max_points):
                 inds = np.linspace(0, data_length-1, max_points, dtype=int)
-            plot_time = data[inds,6]
-            p0 = data[inds, 3]
+            plot_time = data[inds,6] - data[0,6]
+            p0 = signal.medfilt(data[inds, 3], 3)
             p1 = data[inds, 0]
-            p3 = data[inds, 7]
-            p4 = data[inds, 8]
+            p3 = signal.medfilt(data[inds, 7])
+            p4 = signal.medfilt(data[inds, 8])
             p5 = data[inds, 1]
             p6 = data[inds, 2]
-            p7 = data[inds, 9]
-            p8 = data[inds, 10]
-            p9 = data[inds, 11]
+            p7 = signal.medfilt(data[inds, 9])
+            p8 = signal.medfilt(data[inds, 10])
+            p9 = signal.medfilt(data[inds, 11])
 
-            ymax = np.max(data[:,7]) + 1
+            xmax = np.max(plot_time)
+            ymax1 = np.max((data[:,7:9]).flatten())+ 1
+            ymax2 = np.max((data[:,9:12]).flatten())+ 1
+            ymin2 = np.min((data[:,9:12]).flatten())- 1
 
             ### Plot 1 ###
             ds = 1
@@ -287,9 +280,10 @@ class MainWindow(Ui_EspressoGUI):
             self.c8.setData(plot_time, p8)
             self.c9.setData(plot_time, p9)
             
-            self.plot1.enableAutoRange()
-            self.plot1.setYRange(0, ymax)
-            self.plot3.enableAutoRange()
+            self.plot1.setYRange(0, ymax1)
+            self.plot1.setXRange(0, xmax)
+            self.plot3.setYRange(ymin2, ymax2)
+            self.plot3.setXRange(0, xmax)
 
             t2 = time.time()
             #print('log length: ', len(self.machine.log[:,1]), '  text time: ', t3-t1, ' plot time: ', t2-t1)

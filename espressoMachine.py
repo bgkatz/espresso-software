@@ -1,24 +1,26 @@
 ### Espresso Machine Interface ###
 
 # Commands:
-# Pump command
-# Water temperature command
-# Group temperature command
-# Pump command type (0=Disabled, 1=Pressure (bar), 2=Flow (mL/s), 3=Velocity (rad/s), 4=torque (N-m))
-# Flow direction (0=Tank, 1=Group, 2=Drip, 3=Spout, 4=Steam)
-# Tare (1 = tare)
+# 0. Pump command
+# 1. Water temperature command
+# 2. Group temperature command
+# 3. Pump command type (0=Disabled, 1=Pressure (bar), 2=Flow (mL/s), 3=Velocity (rad/s), 4=torque (N-m))
+# 4. Flow direction (0=Tank, 1=Group, 2=Drip, 3=Spout, 4=Steam)
+# 5. Tare (1 = tare)
 
 # State: 
-# Sample timestamp
-# Pressure                  (Bar)
-# Flow                      (mL/s)
-# Water Temp                (C)
-# Heater Temp               (C)
-# Group Temp                (C)
-# Pump velocity             (rad/s)
-# Pump torque command       (N-m)
-# Pump torque               (N-m)
-# Weight since scale tare   (g)
+# 0. Sample timestamp
+# 1. Pressure                  (Bar)
+# 2. Flow                      (mL/s)
+# 3. Water Temp                (C)
+# 4. Heater Temp               (C)
+# 5. Group Temp                (C)
+# 6. Pump velocity             (rad/s)
+# 7. Pump torque command       (N-m)
+# 8. Pump torque               (N-m)
+# 9. Weight since scale tare   (g)
+# 10. Group heater power       (w)
+# 11. Water heater power       (w)
 
 from espressoComm import *
 

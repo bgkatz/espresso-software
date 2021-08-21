@@ -6,8 +6,8 @@ from espressoMachine import *
 from espressoModes import *
 
 
-mode_list = (idleMode, preheatMode, manualMode, nineBarShot)
-custom_modes = (idleMode, nineBarShot)
+mode_list = (idleMode, preheatMode, manualMode, preheatPlot, nineBarShot)
+custom_modes = (idleMode, preheatMode, flushMode, manualMode, preheatPlot, nineBarShot)
 
 class espressoFSM():
     def __init__(self, machine, user_input=False):
@@ -17,6 +17,7 @@ class espressoFSM():
                     preheatMode().title:preheatMode,
                     flushMode().title:flushMode,
                     nineBarShot().title:nineBarShot,
+                    preheatPlot().title:preheatPlot
                     }
         self.active_mode = idleMode()
         self.mode_running = False

@@ -26,7 +26,7 @@ class preheatMode():
     def __init__(self):
         self.title = 'Preheat'
         self.flowCmd = 2.0
-        self.tempCmd = 93.0
+        self.tempCmd = 0.0
     def run(self, em, ui):
         em.cmd.setFlowDir(0)          # flow to tank
         em.cmd.setPumpCmdType(2)     # flow control
@@ -66,13 +66,33 @@ class manualMode():
         em.cmd = self.cmds
     def start(self):
         em.log_enabled = True
-        pass
     def stop(self, em):
         em.cmd.cmd_vec = np.zeros(em.cmd.cmd_vec.shape)
         em.log_enabled = False
     def exit(self, em):
         em.cmd.cmd_vec = np.zeros(em.cmd.cmd_vec.shape)
         em.log_enabled = False
+        return True
+
+class preheatPlot():
+    def __init__(self):
+        self.title = 'Plot Preheat'
+    def run(self, em, ui, flowCmd = 2.0, waterTempCmd = 20.0, groupTempCmd = 90.0):
+        em.log_enabled = True
+        em.cmd.setFlowDir(0)        # flow to tank
+        em.cmd.setPumpCmdType(2)    # flow control
+        em.cmd.setPumpCmd(flowCmd)
+        em.cmd.setWaterTempCmd(waterTempCmd)
+        em.cmd.setGroupTempCmd(groupTempCmd)
+    def start(self):
+        pass
+    def stop(self, em):
+        em.log_enabled = False
+        em.cmd.cmd_vec = np.zeros(em.cmd.cmd_vec.shape)
+    def exit(self, em):
+        em.cmd.cmd_vec = np.zeros(em.cmd.cmd_vec.shape)
+        em.log_enabled = False
+        em.clearLog()
         return True
 
 class nineBarShot():
