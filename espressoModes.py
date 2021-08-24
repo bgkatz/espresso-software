@@ -45,7 +45,7 @@ class flushMode():
     # Flushes water through group #
     def __init__(self):
         self.title = 'Flush'
-    def run(self, em, ui, flowCmd = 4.0):
+    def run(self, em, ui, flowCmd = 6.0):
         em.cmd.setFlowDir(1)      # flow to group
         em.cmd.setPumpCmdType(2)  # flow control
         em.cmd.setPumpCmd(flowCmd)
@@ -77,7 +77,7 @@ class manualMode():
 class preheatPlot():
     def __init__(self):
         self.title = 'Plot Preheat'
-    def run(self, em, ui, flowCmd = 2.0, waterTempCmd = 20.0, groupTempCmd = 90.0):
+    def run(self, em, ui, flowCmd = 2.0, waterTempCmd = 90.0, groupTempCmd = 90.0):
         em.log_enabled = True
         em.cmd.setFlowDir(0)        # flow to tank
         em.cmd.setPumpCmdType(2)    # flow control
@@ -107,14 +107,14 @@ class nineBarShot():
 
         self.t_start = 0
         self.t_pi = 10.0
-        self.water_temp = 15.0
-        self.group_temp = 60.0
+        self.water_temp = 95.0
+        self.group_temp = 95.0
         self.preheat_flow = 2.0
-        self.pi_flow = 0.0
+        self.pi_flow = 2.0
         self.pi_end_pressure = 6.0
         self.shot_pressure = 6.0
         self.shot_weight = 32.0
-        self.temp_tol = 50
+        self.temp_tol = .5
 
     def run(self, em, ui):
         if(not self.started):
@@ -132,7 +132,7 @@ class nineBarShot():
 
     def stop(self, em):
         em.cmd.cmd_vec = np.zeros(em.cmd.cmd_vec.shape)
-        self.pi_flow = 0.00
+        #self.pi_flow = 0.00
         em.log_enabled = False
 
     def start(self):
@@ -166,7 +166,7 @@ class nineBarShot():
         else:
             em.log_enabled = True
             em.cmd.setFlowDir(1)                     # flow to group
-            self.pi_flow += .01
+            #self.pi_flow += .001
         em.cmd.setPumpCmdType(2)                 # pump in flow control
         em.cmd.setPumpCmd(self.pi_flow)      # preinfusion flow
         #if(state.time() > (self.t_start + self.t_pi)):
@@ -186,12 +186,13 @@ class nineBarShot():
         print('done')
         em.log_enabled = False
         em.cmd.setFlowDir(2)                     # Bleed group to drip tray
+        em.cmd.setPumpCmdType(2)
         em.cmd.setPumpCmd(0)                     # zero pressure command
         #time.sleep(1.0)
         time.sleep(2.0)
         em.cmd.setFlowDir(0)
         em.cmd.setPumpCmdType(0)
-        self.pi_flow = 0
+        #self.pi_flow = 0
         self.done = True
         self.started = False
 

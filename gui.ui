@@ -65,6 +65,12 @@
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
+      <property name="minimumSize">
+       <size>
+        <width>1400</width>
+        <height>0</height>
+       </size>
+      </property>
       <property name="maximumSize">
        <size>
         <width>1400</width>
@@ -298,7 +304,7 @@
       </property>
       <property name="minimumSize">
        <size>
-        <width>450</width>
+        <width>500</width>
         <height>0</height>
        </size>
       </property>
@@ -351,23 +357,6 @@ border-radius: 40px;
         </widget>
        </item>
        <item>
-        <widget class="QWidget" name="gridWidget" native="true">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>20</height>
-          </size>
-         </property>
-         <layout class="QGridLayout" name="gridLayout_3"/>
-        </widget>
-       </item>
-       <item>
         <widget class="QListWidget" name="modeList">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -378,7 +367,7 @@ border-radius: 40px;
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>450</height>
+           <height>400</height>
           </size>
          </property>
          <property name="font">
@@ -396,6 +385,32 @@ border-radius: 40px;
         </widget>
        </item>
        <item>
+        <widget class="QPushButton" name="customButton">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>100</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>30</pointsize>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QPushButton{
+border-style: solid;
+border-color: #343434;
+border-width: 5px;
+border-radius: 10px;
+}</string>
+         </property>
+         <property name="text">
+          <string>Customize Mode</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="saveButton">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -406,7 +421,7 @@ border-radius: 40px;
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>125</height>
+           <height>100</height>
           </size>
          </property>
          <property name="font">
@@ -438,7 +453,7 @@ border-radius: 10px;
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>125</height>
+           <height>100</height>
           </size>
          </property>
          <property name="font">

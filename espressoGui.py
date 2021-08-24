@@ -25,8 +25,8 @@ class MainWindow(Ui_EspressoGUI):
         self.mw = QtWidgets.QMainWindow()
         self.setupUi(self.mw)
 
-        #self.machine = espressoMachine()
-        self.machine = fakeEspressoMachine()
+        self.machine = espressoMachine()
+        #self.machine = fakeEspressoMachine()
         self.machine.startIO()
         self.fsm = espressoFSM(self.machine)
         self.fsm.start()
@@ -100,16 +100,8 @@ class MainWindow(Ui_EspressoGUI):
         # Connect buttons #
         self.startButton.clicked.connect(self.startPressed)
         self.saveButton.clicked.connect(self.saveLogPressed)
-        #self.pressureSlider.valueChanged.connect(self.pressureSliderChanged)
-        #self.tempBox.valueChanged.connect(self.tempBoxChanged)
-        #self.manualButton.clicked.connect(self.manualPressed)
-        #self.flushButton.clicked.connect(self.flushPressed)
-        #self.steamButton.clicked.connect(self.steamPressed)
-        #self.presPushButton.clicked.connect(self.pressurePressed)
-        #self.flowPushButton.clicked.connect(self.flowPressed)
-        #self.idleButton.clicked.connect(self.idlePressed)
-        #self.preheatButton.clicked.connect(self.preheatPressed)
         self.tareButton.clicked.connect(self.tarePressed)
+        self.customButton.clicked.connect(self.customize)
         self.modeList.itemClicked.connect(self.modeListPressed)
         self.updateButtons()
 
@@ -140,36 +132,8 @@ class MainWindow(Ui_EspressoGUI):
             self.fsm.mode_running = True 
         self.updateButtons()
 
-    def idlePressed(self):
-        print('idle pressed')
-        self.fsm.transition(self.machine, idleMode)
-        self.updateButtons()
-
-    def preheatPressed(self):
-        print('preheat pressed')
-        self.fsm.transition(self.machine, preheatMode)
-        self.updateButtons()
-
-    def manualPressed(self):
-        self.textLog.appendPlainText('manual pressed')
-        self.fsm.transition(self.machine, manualMode)
-        self.updateButtons()
-
-    def flushPressed(self):
-        self.textLog.appendPlainText('flush pressed')
-        self.fsm.transition(self.machine, flushMode)
-        self.updateButtons()
-
-    def steamPressed(self):
-        self.textLog.appendPlainText('steam pressed')
-
-    def pressurePressed(self):
-        pass#if(self.fsm.mode.name == 'MANUAL'):
-            #self.fsm.mode.pumpCmdType = 'PRESSURE'
-
-    def flowPressed(self):
-        pass#if(self.fsm.mode.name == 'MANUAL'):
-            #self.fsm.mode.pumpCmdType = 'FLOW'
+    def customize(self):
+        self.textLog.appendPlainText('customize pressed')
 
     def saveLogPressed(self):
         self.textLog.appendPlainText('save pressed')
@@ -178,12 +142,6 @@ class MainWindow(Ui_EspressoGUI):
     def tarePressed(self):
         self.textLog.appendPlainText('taring')
         self.machine.cmd.tare(1)
-
-    def pressureSliderChanged(self):
-        pass
-
-    def tempBoxChanged(self):
-        pass
 
     def modeListPressed(self, item):
         self.textLog.appendPlainText(item.text())
