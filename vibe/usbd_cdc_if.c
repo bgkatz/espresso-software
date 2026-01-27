@@ -1,65 +1,54 @@
-extern MachineState_t machine_state;
+// External references to state variables
+extern volatile uint8_t is_powered;
+extern volatile uint8_t steam_mode;
+extern volatile char control_mode;
+extern volatile float target_val;
+extern volatile float target_tw;
+extern volatile float target_tg;
+extern volatile float sim_w;
 
-static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len) {
-    // Ensure null termination for string processing
-    // Note: Buf is usually a reusable buffer, check implementation
-    Buf[*Len] = 0; 
-    
-    // 1. POWER COMMANDS
-    if (strncmp((char*)Buf, "POWER_ON", 8) == 0) {
-        machine_state.is_powered = 1;
-        // Set defaults upon power up
-        machine_state.target_temp_water = 93.0f;
-        machine_state.target_temp_group = 93.0f;
+static int8_t CDC_Receive_HS(uint8_t* Buf, uint32_t *Len) {
+    // Null terminate for safety
+    Buf[*Len] = 0;
+    char* cmd = (char*)Buf;
+
+    // 1. GLOBAL COMMANDS
+    if (strncmp(cmd, "POWER_ON", 8) == 0) {
+        is_powered = 1;
+        target_tw = 93.0f; target_tg = 93.0f;
     }
-    else if (strncmp((char*)Buf, "POWER_OFF", 9) == 0) {
-        machine_state.is_powered = 0;
-        machine_state.target_val = 0.0f; // Cut pump
-        machine_state.steam_mode = 0;
+    else if (strncmp(cmd, "POWER_OFF", 9) == 0) {
+        is_powered = 0;
+        target_val = 0.0f; steam_mode = 0;
     }
-    // 2. STOP COMMAND
-    else if (strncmp((char*)Buf, "STOP", 4) == 0) {
-        machine_state.target_val = 0.0f;
+    else if (strncmp(cmd, "STOP", 4) == 0) {
+        target_val = 0.0f;
     }
-    // 3. STEAM COMMANDS
-    else if (strncmp((char*)Buf, "STEAM_ON", 8) == 0) {
-        machine_state.steam_mode = 1;
+    else if (strncmp(cmd, "TARE", 4) == 0) {
+        sim_w = 0.0f; // Reset Weight
     }
-    else if (strncmp((char*)Buf, "STEAM_OFF", 9) == 0) {
-        machine_state.steam_mode = 0;
-    }
-    // 4. VALUE COMMANDS (Parse float)
+    else if (strncmp(cmd, "STEAM_ON", 8) == 0) steam_mode = 1;
+    else if (strncmp(cmd, "STEAM_OFF", 9) == 0) steam_mode = 0;
+
+    // 2. VALUE COMMANDS
     else {
-        // Find delimiter
-        char* val_str = NULL;
-        for (uint32_t i=0; i<*Len; i++) {
-            if (Buf[i] == ':') {
-                val_str = (char*)&Buf[i+1];
-                break;
-            }
-        }
-
-        if (val_str) {
-            float val = strtof(val_str, NULL);
+        // Parse "CMD:VALUE"
+        char* val_ptr = strchr(cmd, ':');
+        if (val_ptr) {
+            float val = strtof(val_ptr + 1, NULL);
             
-            if (strncmp((char*)Buf, "SET_P", 5) == 0) {
-                machine_state.control_mode = 'P';
-                machine_state.target_val = val;
+            if (strncmp(cmd, "SET_P", 5) == 0) {
+                control_mode = 'P'; target_val = val;
             }
-            else if (strncmp((char*)Buf, "SET_F", 5) == 0) {
-                machine_state.control_mode = 'F';
-                machine_state.target_val = val;
+            else if (strncmp(cmd, "SET_F", 5) == 0) {
+                control_mode = 'F'; target_val = val;
             }
-            else if (strncmp((char*)Buf, "SET_TW", 6) == 0) {
-                machine_state.target_temp_water = val;
-            }
-            else if (strncmp((char*)Buf, "SET_TG", 6) == 0) {
-                machine_state.target_temp_group = val;
-            }
+            else if (strncmp(cmd, "SET_TW", 6) == 0) target_tw = val;
+            else if (strncmp(cmd, "SET_TG", 6) == 0) target_tg = val;
         }
     }
 
-    USBD_CDC_SetRxBuffer(&hUsbDeviceFS, UserRxBufferFS);
-    USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+    USBD_CDC_SetRxBuffer(&hUsbDeviceHS, UserRxBufferHS);
+    USBD_CDC_ReceivePacket(&hUsbDeviceHS);
     return (USBD_OK);
 }
