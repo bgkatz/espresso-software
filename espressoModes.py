@@ -107,14 +107,14 @@ class nineBarShot():
 
         self.t_start = 0
         self.t_pi = 10.0
-        self.water_temp = 95.0
-        self.group_temp = 95.0
+        self.water_temp = 88.0
+        self.group_temp = 88.0
         self.preheat_flow = 2.0
         self.pi_flow = 2.0
         self.pi_end_pressure = 6.0
         self.shot_pressure = 6.0
         self.shot_weight = 32.0
-        self.temp_tol = .5
+        self.temp_tol = 1.0
 
     def run(self, em, ui):
         if(not self.started):
@@ -161,7 +161,7 @@ class nineBarShot():
 
     def preinfuse(self, em):
         #print('preinfusion.  flow: ', em.state.flow(), ' pr ', em.state.pressure())
-        if((em.state.time()-self.t_start)<2.0): # flow to drip tray to purge air
+        if((em.state.time()-self.t_start)<1.0): # flow to drip tray to purge air
             em.cmd.setFlowDir(2)
         else:
             em.log_enabled = True
