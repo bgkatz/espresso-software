@@ -268,50 +268,54 @@ Item {
     // -----------------------------------------------------------------------
     // Chart data connections
     // -----------------------------------------------------------------------
+    property bool chartActive: false
+
     Connections {
         target: controller
 
         function onSessionStarted() {
+            // Clear all series and reset axes to t=0
             pressureSeries.clear()
             flowSeries.clear()
             weightSeries.clear()
             twSeries.clear()
             tgSeries.clear()
-            axisX.min  = 0;  axisX.max  = 30
-            axisTX.min = 0;  axisTX.max = 30
+            axisX.min  = 0;  axisX.max  = 5
+            axisTX.min = 0;  axisTX.max = 5
+            axisYWeight.max = 60
+            axisTY.max = 100
+            chartActive = true
+        }
+
+        // Freeze chart when profile or flush ends
+        function onProfileRunningChanged() {
+            if (!controller.profileRunning) chartActive = false
+        }
+        function onFlushOnChanged() {
+            if (!controller.flushOn) chartActive = false
         }
 
         function onNewDataPoint(t, p, f, w, tw, tg) {
+            if (!chartActive) return
+
             pressureSeries.append(t, p)
             flowSeries.append(t, f)
             weightSeries.append(t, w)
             twSeries.append(t, tw)
             tgSeries.append(t, tg)
 
-            // Expand Y axis for weight if needed
+            // Track current time exactly — axis grows smoothly with every point
+            var xMax = Math.max(5, t)
+            axisX.max  = xMax
+            axisTX.max = xMax
+
+            // Expand weight Y if needed
             if (w > axisYWeight.max * 0.85)
                 axisYWeight.max = Math.ceil(w / 10) * 10 + 10
 
-            // Expand temp Y if steam is used
+            // Expand temp Y if steam pushes it high
             if (tw > axisTY.max * 0.9)
                 axisTY.max = Math.ceil(tw / 20) * 20 + 10
-
-            // Scroll time axis — show rolling 30s window
-            if (t > 30) {
-                var minT = t - 30
-                axisX.min  = minT;  axisX.max  = t
-                axisTX.min = minT;  axisTX.max = t
-
-                // Prune old points (keep only what's visible + a small buffer)
-                var trim = minT - 2
-                while (pressureSeries.count > 1 && pressureSeries.at(0).x < trim) {
-                    pressureSeries.remove(0)
-                    flowSeries.remove(0)
-                    weightSeries.remove(0)
-                    twSeries.remove(0)
-                    tgSeries.remove(0)
-                }
-            }
         }
     }
 }

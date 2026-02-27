@@ -159,7 +159,10 @@ ApplicationWindow {
                     Material.foreground: "white"
                     font.pixelSize: 15
                     font.bold: true
-                    onClicked: controller.toggleProfile()
+                    onClicked: {
+                        controller.toggleProfile()
+                        if (!controller.profileRunning) tabBar.currentIndex = 0
+                    }
                 }
 
                 // FLUSH button

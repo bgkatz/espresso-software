@@ -47,103 +47,81 @@ Item {
             }
         }
 
-        delegate: Item {
+        delegate: Rectangle {
             id: delegateRoot
             width: stepList.width
             height: 60
+            radius: 8
+            color:  isActive ? "#1a3a2a" : "#252526"
+            border.color: isActive ? "#2ecc71" : "#3e3e42"
+            border.width: 1
+            property bool isActive: controller.profileRunning && controller.stepIndex === index
 
-            // ---- Background card ----
+            // Active-step left accent bar
             Rectangle {
-                id: card
-                anchors.fill: parent
-                radius: 8
-                color:  isActive ? "#1a3a2a" : "#252526"
-                border.color: isActive ? "#2ecc71" : "#3e3e42"
-                border.width: 1
-                property bool isActive: controller.profileRunning && controller.stepIndex === index
+                visible: delegateRoot.isActive
+                width: 4; height: parent.height * 0.6; radius: 2; color: "#2ecc71"
+                anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
+            }
 
-                // Active-step left accent bar
-                Rectangle {
-                    visible: card.isActive
-                    width: 4; height: parent.height * 0.6; radius: 2; color: "#2ecc71"
-                    anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
+            // ---- Row: step number | 6 data columns | delete button ----
+            Row {
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 8
+
+                // Step number
+                Text {
+                    width: 28; height: parent.height
+                    text: index + 1
+                    color: "#555"; font.pixelSize: 12
+                    verticalAlignment: Text.AlignVCenter
+                    horizontalAlignment: Text.AlignHCenter
                 }
 
-                // Step content row
-                Row {
-                    anchors.fill: parent
-                    anchors.leftMargin: 20
-                    anchors.rightMargin: 8
-
-                    Text {                              // index number
-                        width: 32; height: parent.height
-                        text: index + 1
-                        color: "#555"; font.pixelSize: 12
-                        verticalAlignment: Text.AlignVCenter
+                // 6 data columns — stretch to fill available space minus delete button
+                Repeater {
+                    model: [stepMode,
+                            setVal.toFixed(1),
+                            tw.toFixed(0),
+                            tg.toFixed(0),
+                            exitCond,
+                            exitVal.toFixed(1)]
+                    Text {
+                        width: (delegateRoot.width - 28 - 12 - 8 - 52) / 6
+                        height: delegateRoot.height
+                        text: modelData
+                        color: "white"; font.pixelSize: 14
+                        verticalAlignment:   Text.AlignVCenter
                         horizontalAlignment: Text.AlignHCenter
                     }
+                }
 
-                    // The 6 data columns — values come from model roles in this delegate's scope
-                    Repeater {
-                        model: [stepMode,
-                                setVal.toFixed(1),
-                                tw.toFixed(0),
-                                tg.toFixed(0),
-                                exitCond,
-                                exitVal.toFixed(1)]
-                        Text {
-                            width: (delegateRoot.width - 52) / 6
-                            height: delegateRoot.height
-                            text: modelData
-                            color: "white"; font.pixelSize: 14
-                            verticalAlignment:   Text.AlignVCenter
-                            horizontalAlignment: Text.AlignHCenter
-                        }
+                // ---- Delete button ----
+                Rectangle {
+                    width: 44; height: 44
+                    anchors.verticalCenter: parent.verticalCenter
+                    radius: 6
+                    color: deleteArea.pressed ? "#922b21" : "#c0392b"
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "✕"
+                        color: "white"; font.pixelSize: 16; font.bold: true
+                    }
+
+                    MouseArea {
+                        id: deleteArea
+                        anchors.fill: parent
+                        onClicked: profileModel.removeStep(index)
                     }
                 }
             }
 
-            // ---- Delete reveal panel (swipe-left target) ----
-            Rectangle {
-                id: deletePanel
-                anchors { right: card.right; top: card.top; bottom: card.bottom }
-                width: 0
-                radius: 8; color: "#c0392b"; clip: true
-                Text {
-                    anchors.centerIn: parent
-                    text: "DELETE"; color: "white"; font.pixelSize: 12; font.bold: true
-                    visible: deletePanel.width > 50
-                }
-            }
-
-            // ---- Single MouseArea handles both tap and swipe ----
+            // ---- Tap anywhere on the row (except the delete button) to edit ----
             MouseArea {
-                anchors.fill: parent
-                property real pressX: 0
-                property bool dragging: false
-
-                onPressed: function(mouse) {
-                    pressX   = mouse.x
-                    dragging = false
-                }
-
-                onPositionChanged: function(mouse) {
-                    var delta = pressX - mouse.x
-                    if (delta > 8) dragging = true
-                    deletePanel.width = Math.max(0, Math.min(110, delta))
-                }
-
-                onReleased: function(mouse) {
-                    var delta = pressX - mouse.x
-                    if (delta > 80) {
-                        controller.profileModel.removeStep(index)
-                    } else if (!dragging) {
-                        // Pass values directly from the delegate's model roles
-                        editDialog.openForStep(index, stepMode, setVal, tw, tg, exitCond, exitVal)
-                    } else {
-                        deletePanel.width = 0
-                    }
-                }
+                anchors { fill: parent; rightMargin: 52 }
+                onClicked: editDialog.openForStep(index, stepMode, setVal, tw, tg, exitCond, exitVal)
             }
         }
     }
