@@ -81,7 +81,7 @@ Item {
 
                 // 6 data columns — stretch to fill available space minus delete button
                 Repeater {
-                    model: [stepMode,
+                    model: [stepMode === "P" ? "Pressure" : "Flow",
                             setVal.toFixed(1),
                             tw.toFixed(0),
                             tg.toFixed(0),
@@ -121,7 +121,7 @@ Item {
             // ---- Tap anywhere on the row (except the delete button) to edit ----
             MouseArea {
                 anchors { fill: parent; rightMargin: 52 }
-                onClicked: editDialog.openForStep(index, stepMode, setVal, tw, tg, exitCond, exitVal)
+                onClicked: editDialog.openForStep(index, stepMode, setVal, tw, tg, exitCond, exitVal, rampTime)
             }
         }
     }
@@ -164,8 +164,9 @@ Item {
         property real   editTg:       93.0
         property string editExitCond: "Time >"
         property real   editExitVal:  5.0
+        property real   editRampTime: 0.0
 
-        function openForStep(row, mode, setVal, tw, tg, exitCond, exitVal) {
+        function openForStep(row, mode, setVal, tw, tg, exitCond, exitVal, rampTime) {
             editRow      = row
             editMode     = mode
             editSetVal   = setVal
@@ -173,6 +174,7 @@ Item {
             editTg       = tg
             editExitCond = exitCond
             editExitVal  = exitVal
+            editRampTime = rampTime
             open()
         }
 
@@ -191,6 +193,7 @@ Item {
             m.setTg(editRow,       editTg)
             m.setExitCond(editRow, editExitCond)
             m.setExitVal(editRow,  editExitVal)
+            m.setRampTime(editRow, editRampTime)
         }
 
         standardButtons: Dialog.Ok | Dialog.Cancel
@@ -206,20 +209,16 @@ Item {
                 Row {
                     spacing: 8
                     Repeater {
-                        model: ["P", "F"]
+                        model: [{ label: "Pressure", value: "P" },
+                                { label: "Flow",     value: "F" }]
                         Button {
-                            text: modelData; width: 72; height: 44
-                            Material.background: editDialog.editMode === modelData ? "#2ecc71" : "#3e3e42"
-                            Material.foreground: editDialog.editMode === modelData ? "black"   : "white"
+                            text: modelData.label; width: 90; height: 44
+                            Material.background: editDialog.editMode === modelData.value ? "#2ecc71" : "#3e3e42"
+                            Material.foreground: editDialog.editMode === modelData.value ? "black"   : "white"
                             font.bold: true
-                            onClicked: editDialog.editMode = modelData
+                            onClicked: editDialog.editMode = modelData.value
                         }
                     }
-                }
-                Text {
-                    color: "#666"; font.pixelSize: 12
-                    text: editDialog.editMode === "P" ? "(pressure control)" : "(flow control)"
-                    leftPadding: 8
                 }
             }
 
@@ -240,6 +239,28 @@ Item {
                     value: editDialog.editSetVal
                     onMoved: editDialog.editSetVal = Math.round(value * 10) / 10
                     Material.accent: "#2ecc71"
+                }
+            }
+
+            // ---- Ramp time ----
+            ColumnLayout {
+                Layout.fillWidth: true; spacing: 2
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text { text: "Ramp Time"; color: "#aaa"; font.pixelSize: 14; Layout.preferredWidth: 115 }
+                    Text {
+                        text: editDialog.editRampTime > 0
+                              ? editDialog.editRampTime.toFixed(1) + " s"
+                              : "Instant"
+                        color: "#9b59b6"; font.pixelSize: 15; font.bold: true
+                    }
+                }
+                Slider {
+                    Layout.fillWidth: true
+                    from: 0; to: 10; stepSize: 0.5
+                    value: editDialog.editRampTime
+                    onMoved: editDialog.editRampTime = Math.round(value * 2) / 2
+                    Material.accent: "#9b59b6"
                 }
             }
 
@@ -282,7 +303,7 @@ Item {
                 Layout.fillWidth: true
                 Text { text: "Exit When"; color: "#aaa"; font.pixelSize: 14; Layout.preferredWidth: 115 }
                 ComboBox {
-                    model: ["Time >", "Weight >", "Press >", "Press <"]
+                    model: ["Time >", "Weight >", "Pressure >", "Pressure <"]
                     currentIndex: {
                         var idx = model.indexOf(editDialog.editExitCond)
                         return idx >= 0 ? idx : 0

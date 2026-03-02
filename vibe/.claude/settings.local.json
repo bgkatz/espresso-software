@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:decentespresso.com)",
+      "WebFetch(domain:gaggiuino.github.io)",
+      "WebFetch(domain:visualizer.coffee)",
+      "WebFetch(domain:www.papelespresso.com)",
+      "WebFetch(domain:www.scottrao.com)",
+      "WebFetch(domain:coffeeadastra.com)",
+      "WebFetch(domain:www.home-barista.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:sprofiler.io)",
+      "Bash(python3:*)",
+      "Bash(esp/Scripts/python.exe:*)"
+    ]
+  }
+}

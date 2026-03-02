@@ -138,9 +138,28 @@ ApplicationWindow {
 
         // Action bar — always visible
         Rectangle {
+            id: actionBar
             width: parent.width
             height: 60
             color: "#121212"
+
+            property string saveLogText: "SAVE LOG"
+
+            Timer {
+                id: savedTimer
+                interval: 2000
+                onTriggered: actionBar.saveLogText = "SAVE LOG"
+            }
+
+            Connections {
+                target: controller
+                function onShotSaved(fname) {
+                    actionBar.saveLogText = fname.startsWith("ERROR")
+                                           ? "SAVE FAILED"
+                                           : "SAVED ✓"
+                    savedTimer.restart()
+                }
+            }
 
             RowLayout {
                 anchors.fill: parent
@@ -176,6 +195,21 @@ ApplicationWindow {
                     font.bold: true
                     onClicked: controller.flushOn ? controller.stopFlush()
                                                   : controller.startFlush()
+                }
+
+                // SAVE LOG button — visible after a shot completes
+                Button {
+                    visible: controller.shotAvailable
+                    Layout.preferredWidth: 130
+                    Layout.fillHeight: true
+                    text: actionBar.saveLogText
+                    Material.background: actionBar.saveLogText === "SAVED ✓"   ? "#1e8449"
+                                       : actionBar.saveLogText === "SAVE FAILED" ? "#922b21"
+                                       : "#6c3483"
+                    Material.foreground: "white"
+                    font.pixelSize: 13
+                    font.bold: true
+                    onClicked: controller.saveShot()
                 }
             }
         }

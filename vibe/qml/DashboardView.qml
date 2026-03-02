@@ -139,10 +139,10 @@ Item {
 
             margins { left: 0; right: 0; top: 4; bottom: 0 }
 
-            // Time axis (shared)
+            // Time axis (shared) — max is driven by the animated xMax property below
             ValueAxis {
                 id: axisX
-                min: 0; max: 30
+                min: 0; max: 5
                 labelFormat:  "%.0fs"
                 labelsColor:  "#666"
                 gridLineColor:"#2a2a2a"
@@ -173,6 +173,35 @@ Item {
                 color:        "#3e3e42"
                 labelsFont.pixelSize: 10
                 titleVisible: false
+            }
+
+            // Ghost series (previous shot — drawn first so they render behind)
+            LineSeries {
+                id: ghostPressureSeries
+                name:  "Prev P"
+                color: "#2ecc71"; width: 1; opacity: 0.25; style: Qt.DashLine
+                axisX: axisX; axisY: axisYLeft
+            }
+            LineSeries {
+                id: ghostFlowSeries
+                name:  "Prev F"
+                color: "#3498db"; width: 1; opacity: 0.25; style: Qt.DashLine
+                axisX: axisX; axisY: axisYLeft
+            }
+            LineSeries {
+                id: ghostWeightSeries
+                name:  "Prev W"
+                color: "#888888"; width: 1; opacity: 0.25; style: Qt.DashLine
+                axisX: axisX; axisYRight: axisYWeight
+            }
+
+            // Profile target reference line (current step setpoint)
+            LineSeries {
+                id: targetSeries
+                name:  ""
+                color: "white"; width: 1; opacity: 0.45; style: Qt.DotLine
+                axisX: axisX; axisY: axisYLeft
+                visible: controller.profileRunning
             }
 
             LineSeries {
@@ -225,7 +254,7 @@ Item {
 
             ValueAxis {
                 id: axisTX
-                min: 0; max: 30
+                min: 0; max: 5
                 labelFormat:  "%.0fs"
                 labelsColor:  "#666"
                 gridLineColor:"#2a2a2a"
@@ -270,29 +299,74 @@ Item {
     // -----------------------------------------------------------------------
     property bool chartActive: false
 
+    // Shared animated X-axis maximum — both time axes follow this value.
+    // Behavior is disabled during session reset so the clear is instant.
+    property real xMax: 5
+    Behavior on xMax {
+        enabled: chartActive
+        NumberAnimation { duration: 33; easing.type: Easing.Linear }
+    }
+    onXMaxChanged: {
+        axisX.max  = xMax
+        axisTX.max = xMax
+        if (controller.profileRunning) updateTargetLine()
+    }
+
+    function updateTargetLine() {
+        targetSeries.clear()
+        if (!controller.profileRunning) return
+        var v = controller.currentStepTarget
+        targetSeries.append(0, v)
+        targetSeries.append(Math.max(xMax + 5, 10), v)
+    }
+
     Connections {
         target: controller
 
         function onSessionStarted() {
-            // Clear all series and reset axes to t=0
+            chartActive = false          // disable Behavior so reset is instant
             pressureSeries.clear()
             flowSeries.clear()
             weightSeries.clear()
             twSeries.clear()
             tgSeries.clear()
-            axisX.min  = 0;  axisX.max  = 5
-            axisTX.min = 0;  axisTX.max = 5
+            // ghost series intentionally NOT cleared — they show the previous shot
+            targetSeries.clear()
+            xMax = 5
+            axisX.min   = 0
+            axisTX.min  = 0
             axisYWeight.max = 60
-            axisTY.max = 100
-            chartActive = true
+            axisTY.max  = 100
+            chartActive = true           // re-enable smooth animation
         }
 
-        // Freeze chart when profile or flush ends
         function onProfileRunningChanged() {
-            if (!controller.profileRunning) chartActive = false
+            if (!controller.profileRunning) {
+                chartActive = false
+                targetSeries.clear()
+            }
         }
         function onFlushOnChanged() {
             if (!controller.flushOn) chartActive = false
+        }
+
+        function onPreviousShotReady() {
+            ghostPressureSeries.clear()
+            ghostFlowSeries.clear()
+            ghostWeightSeries.clear()
+            var t = controller.ghostTimes
+            var p = controller.ghostPressures
+            var f = controller.ghostFlows
+            var w = controller.ghostWeights
+            for (var i = 0; i < t.length; i++) {
+                ghostPressureSeries.append(t[i], p[i])
+                ghostFlowSeries.append(t[i], f[i])
+                ghostWeightSeries.append(t[i], w[i])
+            }
+        }
+
+        function onCurrentStepTargetChanged() {
+            updateTargetLine()
         }
 
         function onNewDataPoint(t, p, f, w, tw, tg) {
@@ -304,16 +378,14 @@ Item {
             twSeries.append(t, tw)
             tgSeries.append(t, tg)
 
-            // Track current time exactly — axis grows smoothly with every point
-            var xMax = Math.max(5, t)
-            axisX.max  = xMax
-            axisTX.max = xMax
+            // Update the animated target — Behavior interpolates smoothly
+            xMax = Math.max(5, t)
 
             // Expand weight Y if needed
             if (w > axisYWeight.max * 0.85)
                 axisYWeight.max = Math.ceil(w / 10) * 10 + 10
 
-            // Expand temp Y if steam pushes it high
+            // Expand temp Y if steam is used
             if (tw > axisTY.max * 0.9)
                 axisTY.max = Math.ceil(tw / 20) * 20 + 10
         }

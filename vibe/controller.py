@@ -28,10 +28,12 @@ PACKET_HEADER      = b'ES'
 PACKET_STRUCT_FMT  = f'<2s{SAMPLES_PER_PACKET * 5}f'
 PACKET_SIZE        = struct.calcsize(PACKET_STRUCT_FMT)
 PROFILE_FILE       = "profiles.json"
-CHART_HZ           = 10          # chart update rate (Hz)
+LOG_DIR            = "logs"
+CHART_HZ           = 30          # chart update rate (Hz)
 STATE_MACHINE_HZ   = 20          # profile state-machine tick rate (Hz)
 
-EXIT_CONDITIONS = ["Time >", "Weight >", "Press >", "Press <"]
+EXIT_CONDITIONS      = ["Time >", "Weight >", "Pressure >", "Pressure <"]
+PREDICTIVE_STOP_G   = 2.0       # grams before weight target to cut pump
 
 # ---------------------------------------------------------------------------
 # 1. Mock hardware  (replace self.connection with serial.Serial(...) for real hw)
@@ -71,7 +73,7 @@ class MockEspressoMachine:
         tgt_w = (140.0 if self.steam else self.tgt_tw) if self.powered else 20.0
         tgt_g = self.tgt_tg if self.powered else 20.0
         self.tw += (tgt_w - self.tw) * 0.5 * dt
-        self.tg += (tgt_g - self.tg) * 0.1 * dt
+        self.tg += (tgt_g - self.tg) * 0.5 * dt
         if self.powered:
             cur = self.p if self.ctrl_mode == 'P' else self.f
             self.pump_duty += (self.tgt_val - cur) * 5.0 * dt
@@ -126,12 +128,12 @@ class SerialWorker(QThread):
 # 3. Profile model (QAbstractListModel → QML ListView)
 # ---------------------------------------------------------------------------
 _DEFAULT_STEPS = [
-    ["F", 4.0, 93.0, 93.0, "Time >",   4.0],
-    ["P", 4.0, 93.0, 93.0, "Press >",  3.5],
-    ["P", 9.0, 93.0, 93.0, "Weight >", 36.0],
-    ["P", 0.0, 93.0, 93.0, "Time >",   0.1],
+    ["F", 4.0, 93.0, 93.0, "Time >",      4.0, 0.0],
+    ["P", 4.0, 93.0, 93.0, "Pressure >",  3.5, 2.0],
+    ["P", 9.0, 93.0, 93.0, "Weight >",   36.0, 3.0],
+    ["P", 0.0, 93.0, 93.0, "Time >",      0.1, 0.0],
 ]
-_BLANK_STEP = ["P", 0.0, 93.0, 93.0, "Time >", 5.0]
+_BLANK_STEP = ["P", 0.0, 93.0, 93.0, "Time >", 5.0, 0.0]
 
 class ProfileModel(QAbstractListModel):
     # Custom roles accessed in QML as model.stepMode, model.setVal, etc.
@@ -141,6 +143,7 @@ class ProfileModel(QAbstractListModel):
     TgRole       = Qt.ItemDataRole.UserRole + 4
     ExitCondRole = Qt.ItemDataRole.UserRole + 5
     ExitValRole  = Qt.ItemDataRole.UserRole + 6
+    RampTimeRole = Qt.ItemDataRole.UserRole + 7
 
     def __init__(self):
         super().__init__()
@@ -155,6 +158,7 @@ class ProfileModel(QAbstractListModel):
             self.TgRole:       b'tg',
             self.ExitCondRole: b'exitCond',
             self.ExitValRole:  b'exitVal',
+            self.RampTimeRole: b'rampTime',
         }
 
     def rowCount(self, parent=QModelIndex()):
@@ -171,6 +175,7 @@ class ProfileModel(QAbstractListModel):
             self.TgRole:       float(s[3]),
             self.ExitCondRole: s[4],
             self.ExitValRole:  float(s[5]),
+            self.RampTimeRole: float(s[6]) if len(s) > 6 else 0.0,
         }.get(role)
 
     # --- Slots called from QML to mutate a step ---
@@ -209,6 +214,14 @@ class ProfileModel(QAbstractListModel):
         if 0 <= row < len(self._steps):
             self._steps[row][5] = value
             self._notify(row, self.ExitValRole)
+
+    @pyqtSlot(int, float)
+    def setRampTime(self, row, value):
+        if 0 <= row < len(self._steps):
+            while len(self._steps[row]) < 7:
+                self._steps[row].append(0.0)
+            self._steps[row][6] = value
+            self._notify(row, self.RampTimeRole)
 
     @pyqtSlot()
     def addStep(self):
@@ -261,7 +274,11 @@ class EspressoController(QObject):
     # Emitted at CHART_HZ; QML connects and appends to LineSeries
     newDataPoint = pyqtSignal(float, float, float, float, float, float)
     # args:                   t_s,  press,  flow,  weight, tw,   tg
-    sessionStarted = pyqtSignal()   # tells chart to clear all series
+    sessionStarted   = pyqtSignal()   # tells chart to clear all series
+    previousShotReady        = pyqtSignal()   # ghost overlay data is ready
+    currentStepTargetChanged = pyqtSignal(float)
+    shotAvailableChanged     = pyqtSignal(bool)
+    shotSaved                = pyqtSignal(str)  # emits saved filename on success
 
     def __init__(self):
         super().__init__()
@@ -288,6 +305,23 @@ class EspressoController(QObject):
         self._step_start_time  = 0.0
         self._is_heating       = False
         self._saved_profiles   = {}
+
+        # Shot recording (ghost overlay + log export)
+        self._recording       = False
+        self._shot_times      = []; self._shot_pressures = []
+        self._shot_flows      = []; self._shot_weights   = []
+        self._shot_tw         = []; self._shot_tg        = []
+        self._shot_available  = False
+        self._ghost_times     = []; self._ghost_pressures = []
+        self._ghost_flows     = []; self._ghost_weights   = []
+
+        # Profile target overlay
+        self._current_step_target = 0.0
+
+        # Transition ramp state
+        self._ramp_start    = 0.0
+        self._ramp_target   = 0.0
+        self._ramp_duration = 0.0
 
         self._profile_model = ProfileModel()
 
@@ -350,6 +384,24 @@ class EspressoController(QObject):
     @pyqtProperty('QVariantList', notify=savedProfileNamesChanged)
     def savedProfileNames(self): return self._saved_profile_names
 
+    @pyqtProperty(float, notify=currentStepTargetChanged)
+    def currentStepTarget(self): return self._current_step_target
+
+    @pyqtProperty(bool, notify=shotAvailableChanged)
+    def shotAvailable(self): return self._shot_available
+
+    @pyqtProperty('QVariantList', notify=previousShotReady)
+    def ghostTimes(self):     return self._ghost_times
+
+    @pyqtProperty('QVariantList', notify=previousShotReady)
+    def ghostPressures(self): return self._ghost_pressures
+
+    @pyqtProperty('QVariantList', notify=previousShotReady)
+    def ghostFlows(self):     return self._ghost_flows
+
+    @pyqtProperty('QVariantList', notify=previousShotReady)
+    def ghostWeights(self):   return self._ghost_weights
+
     @pyqtProperty(QObject, constant=True)
     def profileModel(self):  return self._profile_model
 
@@ -388,6 +440,13 @@ class EspressoController(QObject):
         t = time.monotonic() - self._t0
         self.newDataPoint.emit(t, self._pressure, self._flow,
                                self._weight, self._temp_water, self._temp_group)
+        if self._recording:
+            self._shot_times.append(t)
+            self._shot_pressures.append(self._pressure)
+            self._shot_flows.append(self._flow)
+            self._shot_weights.append(self._weight)
+            self._shot_tw.append(self._temp_water)
+            self._shot_tg.append(self._temp_group)
 
     # -----------------------------------------------------------------------
     # Profile state machine (ticks at STATE_MACHINE_HZ)
@@ -403,6 +462,14 @@ class EspressoController(QObject):
                 self._is_heating = False
                 self._session_start = time.monotonic()
                 self._t0 = self._session_start   # chart resets to t=0 for the shot
+                # Start recording this shot for the ghost overlay and log export
+                self._recording = True
+                self._shot_times.clear();     self._shot_pressures.clear()
+                self._shot_flows.clear();     self._shot_weights.clear()
+                self._shot_tw.clear();        self._shot_tg.clear()
+                if self._shot_available:
+                    self._shot_available = False
+                    self.shotAvailableChanged.emit(False)
                 self.sessionStarted.emit()
                 self._execute_step(self._active_profile[0])
                 self._update_step_index(0)
@@ -423,11 +490,19 @@ class EspressoController(QObject):
         step = self._active_profile[self._current_step_idx]
         trig, val = step[4], float(step[5])
 
+        # Transition ramp: send interpolated setpoint each tick until ramp completes
+        if self._ramp_duration > 0 and elapsed < self._ramp_duration:
+            t_frac = elapsed / self._ramp_duration
+            ramped = self._ramp_start + (self._ramp_target - self._ramp_start) * t_frac
+            self._worker.send_command(f"SET_{step[0]}:{ramped:.2f}")
+
+        # Predictive stop: cut pump PREDICTIVE_STOP_G grams before weight target
+        weight_threshold = val - PREDICTIVE_STOP_G if trig == "Weight >" else val
         next_step = (
-            (trig == "Time >"   and elapsed >= val) or
-            (trig == "Weight >" and self._weight >= val) or
-            (trig == "Press >"  and self._pressure >= val) or
-            (trig == "Press <"  and self._pressure <= val and elapsed > 1.0)
+            (trig == "Time >"      and elapsed >= val) or
+            (trig == "Weight >"    and self._weight >= weight_threshold) or
+            (trig == "Pressure >"  and self._pressure >= val) or
+            (trig == "Pressure <"  and self._pressure <= val and elapsed > 1.0)
         )
 
         if next_step:
@@ -442,9 +517,23 @@ class EspressoController(QObject):
 
     def _execute_step(self, step):
         self._step_start_time = time.monotonic()
-        self._worker.send_command(f"SET_{step[0]}:{step[1]}")
+        self._ramp_target   = float(step[1])
+        self._ramp_duration = float(step[6]) if len(step) > 6 else 0.0
+        if self._ramp_duration > 0:
+            # Start from current reading; ramp is driven by _run_state_machine ticks
+            self._ramp_start = self._pressure if step[0] == 'P' else self._flow
+            self._worker.send_command(f"SET_{step[0]}:{self._ramp_start:.2f}")
+        else:
+            self._ramp_start = float(step[1])
+            self._worker.send_command(f"SET_{step[0]}:{step[1]}")
         self._worker.send_command(f"SET_TW:{step[2]}")
         self._worker.send_command(f"SET_TG:{step[3]}")
+        self._update_step_target(float(step[1]))
+
+    def _update_step_target(self, val):
+        if self._current_step_target != val:
+            self._current_step_target = val
+            self.currentStepTargetChanged.emit(val)
 
     def _update_step_index(self, idx):
         if self._step_index != idx:
@@ -493,8 +582,21 @@ class EspressoController(QObject):
     def stopProfile(self):
         self._profile_running = False
         self._is_heating      = False
+        # Save this shot as the ghost overlay for the next shot; mark log as saveable
+        if self._recording and len(self._shot_times) > 0:
+            n = len(self._shot_times)
+            step = max(1, n // 300)   # downsample to ~300 points max
+            self._ghost_times     = self._shot_times[::step]
+            self._ghost_pressures = self._shot_pressures[::step]
+            self._ghost_flows     = self._shot_flows[::step]
+            self._ghost_weights   = self._shot_weights[::step]
+            self.previousShotReady.emit()
+            self._shot_available = True
+            self.shotAvailableChanged.emit(True)
+        self._recording = False
         self._worker.send_command("STOP")
         self.profileRunningChanged.emit(False)
+        self._update_step_target(0.0)
         self._set_status("IDLE")
 
     @pyqtSlot()
@@ -539,6 +641,31 @@ class EspressoController(QObject):
         if name in self._saved_profiles:
             del self._saved_profiles[name]
             self._save_to_disk()
+
+    @pyqtSlot()
+    def saveShot(self):
+        """Write the most recent shot's time-series data to a CSV log file."""
+        if not self._shot_times:
+            return
+        try:
+            os.makedirs(LOG_DIR, exist_ok=True)
+            ts = time.strftime("%Y-%m-%d_%H-%M-%S")
+            fname = os.path.join(LOG_DIR, f"shot_{ts}.csv")
+            n = len(self._shot_times)
+            tw = self._shot_tw  if len(self._shot_tw)  == n else [0.0] * n
+            tg = self._shot_tg  if len(self._shot_tg)  == n else [0.0] * n
+            with open(fname, 'w') as f:
+                f.write("time_s,pressure_bar,flow_mls,weight_g,temp_water_c,temp_group_c\n")
+                for i in range(n):
+                    f.write(f"{self._shot_times[i]:.3f},"
+                            f"{self._shot_pressures[i]:.3f},"
+                            f"{self._shot_flows[i]:.3f},"
+                            f"{self._shot_weights[i]:.3f},"
+                            f"{tw[i]:.2f},"
+                            f"{tg[i]:.2f}\n")
+            self.shotSaved.emit(os.path.basename(fname))
+        except Exception as e:
+            self.shotSaved.emit(f"ERROR: {e}")
 
     # -----------------------------------------------------------------------
     # Persistence
