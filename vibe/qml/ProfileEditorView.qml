@@ -121,7 +121,7 @@ Item {
             // ---- Tap anywhere on the row (except the delete button) to edit ----
             MouseArea {
                 anchors { fill: parent; rightMargin: 52 }
-                onClicked: editDialog.openForStep(index, stepMode, setVal, tw, tg, exitCond, exitVal, rampTime)
+                onClicked: editDialog.openForStep(index, stepMode, setVal, tw, tg, exitCond, exitVal, rampTime, flowLimit)
             }
         }
     }
@@ -157,24 +157,26 @@ Item {
     Dialog {
         id: editDialog
 
-        property int    editRow:      -1
-        property string editMode:     "P"
-        property real   editSetVal:   0.0
-        property real   editTw:       93.0
-        property real   editTg:       93.0
-        property string editExitCond: "Time >"
-        property real   editExitVal:  5.0
-        property real   editRampTime: 0.0
+        property int    editRow:       -1
+        property string editMode:      "P"
+        property real   editSetVal:    0.0
+        property real   editTw:        93.0
+        property real   editTg:        93.0
+        property string editExitCond:  "Time >"
+        property real   editExitVal:   5.0
+        property real   editRampTime:  0.0
+        property real   editFlowLimit: 0.0
 
-        function openForStep(row, mode, setVal, tw, tg, exitCond, exitVal, rampTime) {
-            editRow      = row
-            editMode     = mode
-            editSetVal   = setVal
-            editTw       = tw
-            editTg       = tg
-            editExitCond = exitCond
-            editExitVal  = exitVal
-            editRampTime = rampTime
+        function openForStep(row, mode, setVal, tw, tg, exitCond, exitVal, rampTime, flowLimit) {
+            editRow       = row
+            editMode      = mode
+            editSetVal    = setVal
+            editTw        = tw
+            editTg        = tg
+            editExitCond  = exitCond
+            editExitVal   = exitVal
+            editRampTime  = rampTime
+            editFlowLimit = flowLimit !== undefined ? flowLimit : 0.0
             open()
         }
 
@@ -187,13 +189,14 @@ Item {
         onAccepted: {
             if (editRow < 0) return
             var m = profileModel
-            m.setMode(editRow,     editMode)
-            m.setSetVal(editRow,   editSetVal)
-            m.setTw(editRow,       editTw)
-            m.setTg(editRow,       editTg)
-            m.setExitCond(editRow, editExitCond)
-            m.setExitVal(editRow,  editExitVal)
-            m.setRampTime(editRow, editRampTime)
+            m.setMode(editRow,      editMode)
+            m.setSetVal(editRow,    editSetVal)
+            m.setTw(editRow,        editTw)
+            m.setTg(editRow,        editTg)
+            m.setExitCond(editRow,  editExitCond)
+            m.setExitVal(editRow,   editExitVal)
+            m.setRampTime(editRow,  editRampTime)
+            m.setFlowLimit(editRow, editFlowLimit)
         }
 
         standardButtons: Dialog.Ok | Dialog.Cancel
@@ -261,6 +264,29 @@ Item {
                     value: editDialog.editRampTime
                     onMoved: editDialog.editRampTime = Math.round(value * 2) / 2
                     Material.accent: "#9b59b6"
+                }
+            }
+
+            // ---- Flow limit (Pressure mode only) ----
+            ColumnLayout {
+                Layout.fillWidth: true; spacing: 2
+                visible: editDialog.editMode === "P"
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text { text: "Flow Limit"; color: "#aaa"; font.pixelSize: 14; Layout.preferredWidth: 115 }
+                    Text {
+                        text: editDialog.editFlowLimit > 0
+                              ? editDialog.editFlowLimit.toFixed(1) + " ml/s"
+                              : "Off"
+                        color: "#1abc9c"; font.pixelSize: 15; font.bold: true
+                    }
+                }
+                Slider {
+                    Layout.fillWidth: true
+                    from: 0; to: 8; stepSize: 0.5
+                    value: editDialog.editFlowLimit
+                    onMoved: editDialog.editFlowLimit = Math.round(value * 2) / 2
+                    Material.accent: "#1abc9c"
                 }
             }
 

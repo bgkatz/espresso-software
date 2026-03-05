@@ -12,7 +12,9 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:sprofiler.io)",
       "Bash(python3:*)",
-      "Bash(esp/Scripts/python.exe:*)"
+      "Bash(esp/Scripts/python.exe:*)",
+      "Bash(\"C:/Users/ben/Google Drive/espresso machine/software/esp/Scripts/python.exe\":*)",
+      "Bash(python:*)"
     ]
   }
 }

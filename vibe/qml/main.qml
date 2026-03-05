@@ -92,18 +92,18 @@ ApplicationWindow {
     // -----------------------------------------------------------------------
     StackLayout {
         id: stack
-        anchors.fill: parent   // ApplicationWindow sizes content area between header/footer automatically
+        anchors.fill: parent
         currentIndex: tabBar.currentIndex
 
         DashboardView    { id: dashView }
         ProfileEditorView {
             id: editorView
-            // Handle "load profile → switch to editor" from Library
         }
         LibraryView {
             id: libraryView
             onNavRequest: function(idx) { tabBar.currentIndex = idx }
         }
+        HistoryView { id: historyView }
     }
 
     // -----------------------------------------------------------------------
@@ -133,6 +133,15 @@ ApplicationWindow {
                 text: "  Library  "
                 font.pixelSize: 13
                 implicitHeight: 44
+            }
+            TabButton {
+                text: "  History  "
+                font.pixelSize: 13
+                implicitHeight: 44
+            }
+
+            onCurrentIndexChanged: {
+                if (currentIndex === 3) controller.refreshShotHistory()
             }
         }
 
@@ -203,13 +212,96 @@ ApplicationWindow {
                     Layout.preferredWidth: 130
                     Layout.fillHeight: true
                     text: actionBar.saveLogText
-                    Material.background: actionBar.saveLogText === "SAVED ✓"   ? "#1e8449"
+                    Material.background: actionBar.saveLogText === "SAVED ✓"     ? "#1e8449"
                                        : actionBar.saveLogText === "SAVE FAILED" ? "#922b21"
                                        : "#6c3483"
                     Material.foreground: "white"
                     font.pixelSize: 13
                     font.bold: true
                     onClicked: controller.saveShot()
+                }
+
+                // NOTES button — visible after a shot is saved (lastLogFname is set)
+                Button {
+                    visible: controller.shotAvailable
+                    Layout.preferredWidth: 100
+                    Layout.fillHeight: true
+                    text: "NOTES"
+                    Material.background: "#2471a3"
+                    Material.foreground: "white"
+                    font.pixelSize: 13
+                    font.bold: true
+                    onClicked: {
+                        notesDialog.rating = 0
+                        notesDialog.notes  = ""
+                        notesDialog.open()
+                    }
+                }
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Tasting notes dialog
+    // -----------------------------------------------------------------------
+    Dialog {
+        id: notesDialog
+        anchors.centerIn: Overlay.overlay
+        width: Math.min(parent.width * 0.85, 480)
+        modal: true
+        title: "Rate this shot"
+        Material.theme: Material.Dark
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        property int    rating: 0
+        property string notes:  ""
+
+        onAccepted: controller.saveShotNotes(rating, notes)
+
+        ColumnLayout {
+            width: parent.width
+            spacing: 16
+
+            // Rating slider
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text { text: "Rating"; color: "#aaa"; font.pixelSize: 14; Layout.preferredWidth: 80 }
+                    Text {
+                        text: notesDialog.rating > 0 ? notesDialog.rating + " / 10" : "—"
+                        color: "#f39c12"; font.pixelSize: 15; font.bold: true
+                    }
+                }
+                Slider {
+                    Layout.fillWidth: true
+                    from: 0; to: 10; stepSize: 1
+                    value: notesDialog.rating
+                    onMoved: notesDialog.rating = Math.round(value)
+                    Material.accent: "#f39c12"
+                }
+            }
+
+            // Tasting notes text area
+            Column {
+                Layout.fillWidth: true
+                spacing: 4
+                Text { text: "Tasting notes"; color: "#aaa"; font.pixelSize: 14 }
+                ScrollView {
+                    width: parent.width
+                    height: 80
+                    TextArea {
+                        id: notesArea
+                        placeholderText: "Tasting notes..."
+                        color: "white"
+                        font.pixelSize: 13
+                        wrapMode: TextArea.Wrap
+                        leftPadding: 8; rightPadding: 8
+                        topPadding: 6; bottomPadding: 6
+                        background: Rectangle { color: "#2a2a2a"; radius: 4 }
+                        onTextChanged: notesDialog.notes = text
+                    }
                 }
             }
         }

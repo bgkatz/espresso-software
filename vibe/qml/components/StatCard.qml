@@ -15,6 +15,9 @@ Rectangle {
     property bool showTare: false
     signal tareClicked()
 
+    // Optional: override the displayed value text entirely (e.g. "1:2.1" for ratio)
+    property string customText: ""
+
     radius: 10
     color:  "#252526"
     border.color: "#3e3e42"
@@ -30,7 +33,7 @@ Rectangle {
 
             Text {
                 id: valueText
-                text: root.value.toFixed(root.decimals)
+                text: root.customText !== "" ? root.customText : root.value.toFixed(root.decimals)
                 font.pixelSize: 32
                 font.bold: true
                 color: root.valueColor
