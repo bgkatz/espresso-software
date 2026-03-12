@@ -19,6 +19,7 @@ extern volatile float    target_val;
 extern volatile float    target_tw;
 extern volatile float    target_tg;
 extern volatile float    flow_limit;
+extern volatile float    pressure_limit;
 extern volatile float    sim_w;          // tare resets weight accumulator
 
 // Pending ACK — set here, consumed and transmitted by the main loop
@@ -76,10 +77,11 @@ static void execute_command(uint8_t ptype, const uint8_t *payload, uint16_t plen
             break;
 
         case CMD_POWER_OFF:
-            is_powered  = 0;
-            target_val  = 0.0f;
-            flow_limit  = 0.0f;
-            steam_mode  = 0;
+            is_powered     = 0;
+            target_val     = 0.0f;
+            flow_limit     = 0.0f;
+            pressure_limit = 0.0f;
+            steam_mode     = 0;
             break;
 
         case CMD_TARE:
@@ -87,8 +89,9 @@ static void execute_command(uint8_t ptype, const uint8_t *payload, uint16_t plen
             break;
 
         case CMD_STOP:
-            target_val = 0.0f;
-            flow_limit = 0.0f;
+            target_val     = 0.0f;
+            flow_limit     = 0.0f;
+            pressure_limit = 0.0f;
             break;
 
         case CMD_STEAM_ON:
@@ -119,6 +122,10 @@ static void execute_command(uint8_t ptype, const uint8_t *payload, uint16_t plen
 
         case CMD_SET_FL:
             flow_limit = cmd->value;
+            break;
+
+        case CMD_SET_PL:
+            pressure_limit = cmd->value;
             break;
 
         default:

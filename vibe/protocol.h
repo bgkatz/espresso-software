@@ -36,6 +36,7 @@ typedef enum {
     CMD_SET_TW    = 0x12,   // value = °C  (water setpoint)
     CMD_SET_TG    = 0x13,   // value = °C  (group setpoint)
     CMD_SET_FL    = 0x14,   // value = ml/s flow limit (0 = off)
+    CMD_SET_PL    = 0x15,   // value = bar  pressure limit (0 = off)
 } CmdOpcode_t;
 
 // ---------------------------------------------------------------------------
@@ -56,12 +57,13 @@ typedef struct __attribute__((packed)) {
 #define STATE_FLAG_POWERED  (1u << 0)
 #define STATE_FLAG_STEAM    (1u << 1)
 
-// Machine state snapshot included in every telemetry packet: 16 bytes
+// Machine state snapshot included in every telemetry packet: 24 bytes
 typedef struct __attribute__((packed)) {
     float    target_val;       // current setpoint (bar or ml/s depending on control_mode)
     float    target_tw;        // water temperature setpoint °C
     float    target_tg;        // group temperature setpoint °C
     float    flow_limit;       // ml/s cap (0 = disabled)
+    float    pressure_limit;   // bar cap in flow mode (0 = disabled)
     uint8_t  flags;            // STATE_FLAG_* bits
     uint8_t  control_mode;     // 'P' (0x50) or 'F' (0x46)
     uint8_t  overrun_count;    // ring-buffer overruns since last packet (resets each packet)
@@ -70,7 +72,7 @@ typedef struct __attribute__((packed)) {
 
 #define SAMPLES_PER_PACKET  10u   // 10 × 1 ms = 10 ms per packet → 100 Hz packet rate
 
-// Full telemetry payload: 16 + 10×24 = 256 bytes
+// Full telemetry payload: 24 + 10×24 = 264 bytes
 typedef struct __attribute__((packed)) {
     MachineState_t state;
     Sample_t       samples[SAMPLES_PER_PACKET];
@@ -100,7 +102,7 @@ typedef struct __attribute__((packed)) {
 #define FRAME_HEADER_LEN 5u   // bytes before payload
 #define FRAME_CRC_LEN    2u
 
-#define TELEMETRY_FRAME_SIZE  (FRAME_OVERHEAD + sizeof(TelemetryPayload_t))  // 263
+#define TELEMETRY_FRAME_SIZE  (FRAME_OVERHEAD + sizeof(TelemetryPayload_t))  // 271
 #define COMMAND_FRAME_SIZE    (FRAME_OVERHEAD + sizeof(CommandPayload_t))     //  13
 #define ACK_FRAME_SIZE        (FRAME_OVERHEAD + sizeof(AckPayload_t))         //   9
 

@@ -121,7 +121,7 @@ Item {
             // ---- Tap anywhere on the row (except the delete button) to edit ----
             MouseArea {
                 anchors { fill: parent; rightMargin: 52 }
-                onClicked: editDialog.openForStep(index, stepMode, setVal, tw, tg, exitCond, exitVal, rampTime, flowLimit)
+                onClicked: editDialog.openForStep(index, stepMode, setVal, tw, tg, exitCond, exitVal, rampTime, flowLimit, pressureLimit)
             }
         }
     }
@@ -165,18 +165,20 @@ Item {
         property string editExitCond:  "Time >"
         property real   editExitVal:   5.0
         property real   editRampTime:  0.0
-        property real   editFlowLimit: 0.0
+        property real   editFlowLimit:     0.0
+        property real   editPressureLimit: 0.0
 
-        function openForStep(row, mode, setVal, tw, tg, exitCond, exitVal, rampTime, flowLimit) {
-            editRow       = row
-            editMode      = mode
-            editSetVal    = setVal
-            editTw        = tw
-            editTg        = tg
-            editExitCond  = exitCond
-            editExitVal   = exitVal
-            editRampTime  = rampTime
-            editFlowLimit = flowLimit !== undefined ? flowLimit : 0.0
+        function openForStep(row, mode, setVal, tw, tg, exitCond, exitVal, rampTime, flowLimit, pressureLimit) {
+            editRow          = row
+            editMode         = mode
+            editSetVal       = setVal
+            editTw           = tw
+            editTg           = tg
+            editExitCond     = exitCond
+            editExitVal      = exitVal
+            editRampTime     = rampTime
+            editFlowLimit    = flowLimit !== undefined ? flowLimit : 0.0
+            editPressureLimit = pressureLimit !== undefined ? pressureLimit : 0.0
             open()
         }
 
@@ -195,8 +197,9 @@ Item {
             m.setTg(editRow,        editTg)
             m.setExitCond(editRow,  editExitCond)
             m.setExitVal(editRow,   editExitVal)
-            m.setRampTime(editRow,  editRampTime)
-            m.setFlowLimit(editRow, editFlowLimit)
+            m.setRampTime(editRow,      editRampTime)
+            m.setFlowLimit(editRow,     editFlowLimit)
+            m.setPressureLimit(editRow, editPressureLimit)
         }
 
         standardButtons: Dialog.Ok | Dialog.Cancel
@@ -287,6 +290,29 @@ Item {
                     value: editDialog.editFlowLimit
                     onMoved: editDialog.editFlowLimit = Math.round(value * 2) / 2
                     Material.accent: "#1abc9c"
+                }
+            }
+
+            // ---- Pressure limit (Flow mode only) ----
+            ColumnLayout {
+                Layout.fillWidth: true; spacing: 2
+                visible: editDialog.editMode === "F"
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text { text: "Pres. Limit"; color: "#aaa"; font.pixelSize: 14; Layout.preferredWidth: 115 }
+                    Text {
+                        text: editDialog.editPressureLimit > 0
+                              ? editDialog.editPressureLimit.toFixed(1) + " bar"
+                              : "Off"
+                        color: "#e67e22"; font.pixelSize: 15; font.bold: true
+                    }
+                }
+                Slider {
+                    Layout.fillWidth: true
+                    from: 0; to: 15; stepSize: 0.5
+                    value: editDialog.editPressureLimit
+                    onMoved: editDialog.editPressureLimit = Math.round(value * 2) / 2
+                    Material.accent: "#e67e22"
                 }
             }
 

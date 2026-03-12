@@ -47,6 +47,7 @@ CMD_SET_F     = 0x11
 CMD_SET_TW    = 0x12
 CMD_SET_TG    = 0x13
 CMD_SET_FL    = 0x14
+CMD_SET_PL    = 0x15
 
 # Machine state flags
 STATE_FLAG_POWERED = 0x01
@@ -56,13 +57,13 @@ STATE_FLAG_STEAM   = 0x02
 SAMPLES_PER_PACKET = 10       # samples per telemetry packet → 100 Hz packets
 
 # Struct formats — all little-endian, matching __attribute__((packed)) C structs
-_FMT_MACHINE_STATE = '<ffffBBBx'   # 16 bytes: target_val,tw,tg,fl, flags,mode,overruns,pad
+_FMT_MACHINE_STATE = '<fffffBBBx'  # 24 bytes: target_val,tw,tg,fl,pl, flags,mode,overruns,pad
 _FMT_SAMPLE        = '<Ifffff'     # 24 bytes: timestamp_us, p, f, w, tw, tg
 _FMT_COMMAND       = '<BBf'        # 6 bytes:  seq, opcode, value
 
-_MACHINE_STATE_SIZE = struct.calcsize(_FMT_MACHINE_STATE)   # 16
+_MACHINE_STATE_SIZE = struct.calcsize(_FMT_MACHINE_STATE)   # 24
 _SAMPLE_SIZE        = struct.calcsize(_FMT_SAMPLE)           # 24
-_TELEMETRY_SIZE     = _MACHINE_STATE_SIZE + _SAMPLE_SIZE * SAMPLES_PER_PACKET  # 256
+_TELEMETRY_SIZE     = _MACHINE_STATE_SIZE + _SAMPLE_SIZE * SAMPLES_PER_PACKET  # 264
 
 LOG_DIR      = "logs"
 PROFILE_FILE = "profiles.json"
@@ -118,6 +119,7 @@ class ParsedTelemetry:
     target_tw:     float
     target_tg:     float
     flow_limit:    float
+    pressure_limit: float
     powered:       bool
     steam_on:      bool
     control_mode:  str    # 'P' or 'F'
@@ -129,7 +131,7 @@ class ParsedTelemetry:
 def _parse_telemetry(payload: bytes) -> Optional[ParsedTelemetry]:
     if len(payload) < _TELEMETRY_SIZE:
         return None
-    tv, ttw, ttg, tfl, flags, ctrl_byte, overruns = struct.unpack_from(
+    tv, ttw, ttg, tfl, tpl, flags, ctrl_byte, overruns = struct.unpack_from(
         _FMT_MACHINE_STATE, payload, 0)
     samples = []
     off = _MACHINE_STATE_SIZE
@@ -139,7 +141,7 @@ def _parse_telemetry(payload: bytes) -> Optional[ParsedTelemetry]:
         off += _SAMPLE_SIZE
     ctrl = chr(ctrl_byte) if ctrl_byte in (ord('P'), ord('F')) else 'P'
     return ParsedTelemetry(
-        target_val=tv, target_tw=ttw, target_tg=ttg, flow_limit=tfl,
+        target_val=tv, target_tw=ttw, target_tg=ttg, flow_limit=tfl, pressure_limit=tpl,
         powered=bool(flags & STATE_FLAG_POWERED),
         steam_on=bool(flags & STATE_FLAG_STEAM),
         control_mode=ctrl,
@@ -222,7 +224,8 @@ class MockEspressoMachine:
         self.tgt_tg      = 20.0
         self.steam       = False
         self.pump_duty   = 0.0
-        self.flow_limit  = 0.0
+        self.flow_limit     = 0.0
+        self.pressure_limit = 0.0
         self._t_us       = 0
         self._overruns   = 0
         self._lock       = threading.Lock()
@@ -244,6 +247,7 @@ class MockEspressoMachine:
             state_bytes = struct.pack(_FMT_MACHINE_STATE,
                                       self.tgt_val, self.tgt_tw,
                                       self.tgt_tg,  self.flow_limit,
+                                      self.pressure_limit,
                                       flags, ord(self.ctrl_mode),
                                       self._overruns)
             self._overruns = 0
@@ -265,9 +269,9 @@ class MockEspressoMachine:
 
     def _execute(self, opcode: int, value: float):
         if   opcode == CMD_POWER_ON:  self.powered = True;  self.tgt_tw = 93.0; self.tgt_tg = 93.0
-        elif opcode == CMD_POWER_OFF: self.powered = False; self.tgt_val = 0.0; self.steam = False; self.flow_limit = 0.0
+        elif opcode == CMD_POWER_OFF: self.powered = False; self.tgt_val = 0.0; self.steam = False; self.flow_limit = 0.0; self.pressure_limit = 0.0
         elif opcode == CMD_TARE:      self.w = 0.0
-        elif opcode == CMD_STOP:      self.tgt_val = 0.0; self.flow_limit = 0.0
+        elif opcode == CMD_STOP:      self.tgt_val = 0.0; self.flow_limit = 0.0; self.pressure_limit = 0.0
         elif opcode == CMD_STEAM_ON:  self.steam = True
         elif opcode == CMD_STEAM_OFF: self.steam = False
         elif opcode == CMD_SET_P:     self.ctrl_mode = 'P'; self.tgt_val = value
@@ -275,6 +279,7 @@ class MockEspressoMachine:
         elif opcode == CMD_SET_TW:    self.tgt_tw = value
         elif opcode == CMD_SET_TG:    self.tgt_tg = value
         elif opcode == CMD_SET_FL:    self.flow_limit = value
+        elif opcode == CMD_SET_PL:    self.pressure_limit = value
 
     def _step(self, dt: float):
         sp_w = (140.0 if self.steam else self.tgt_tw) if self.powered else 20.0
@@ -286,6 +291,8 @@ class MockEspressoMachine:
             self.pump_duty += (self.tgt_val - cur) * 5.0 * dt
             self.pump_duty  = max(0.0, min(12.0, self.pump_duty))
             self.p = self.pump_duty
+            if self.pressure_limit > 0:
+                self.p = min(self.p, self.pressure_limit)
             self.f = self.p / 1.5
             if self.flow_limit > 0:
                 self.f = min(self.f, self.flow_limit)
@@ -339,15 +346,15 @@ class SerialWorker(QThread):
 
 # ---------------------------------------------------------------------------
 # Profile model  (unchanged from previous version)
-# Step format: [mode, setVal, tw, tg, exitCond, exitVal, rampTime, flowLimit]
+# Step format: [mode, setVal, tw, tg, exitCond, exitVal, rampTime, flowLimit, pressureLimit]
 # ---------------------------------------------------------------------------
 _DEFAULT_STEPS = [
-    ["F", 4.0, 93.0, 93.0, "Time >",      4.0, 0.0, 0.0],
-    ["P", 4.0, 93.0, 93.0, "Pressure >",  3.5, 2.0, 0.0],
-    ["P", 9.0, 93.0, 93.0, "Weight >",   36.0, 3.0, 0.0],
-    ["P", 0.0, 93.0, 93.0, "Time >",      0.1, 0.0, 0.0],
+    ["F", 4.0, 93.0, 93.0, "Time >",      4.0, 0.0, 0.0, 0.0],
+    ["P", 4.0, 93.0, 93.0, "Pressure >",  3.5, 2.0, 0.0, 0.0],
+    ["P", 9.0, 93.0, 93.0, "Weight >",   36.0, 3.0, 0.0, 0.0],
+    ["P", 0.0, 93.0, 93.0, "Time >",      0.1, 0.0, 0.0, 0.0],
 ]
-_BLANK_STEP = ["P", 0.0, 93.0, 93.0, "Time >", 5.0, 0.0, 0.0]
+_BLANK_STEP = ["P", 0.0, 93.0, 93.0, "Time >", 5.0, 0.0, 0.0, 0.0]
 
 class ProfileModel(QAbstractListModel):
     ModeRole      = Qt.ItemDataRole.UserRole + 1
@@ -357,7 +364,8 @@ class ProfileModel(QAbstractListModel):
     ExitCondRole  = Qt.ItemDataRole.UserRole + 5
     ExitValRole   = Qt.ItemDataRole.UserRole + 6
     RampTimeRole  = Qt.ItemDataRole.UserRole + 7
-    FlowLimitRole = Qt.ItemDataRole.UserRole + 8
+    FlowLimitRole     = Qt.ItemDataRole.UserRole + 8
+    PressureLimitRole = Qt.ItemDataRole.UserRole + 9
 
     def __init__(self):
         super().__init__()
@@ -372,7 +380,8 @@ class ProfileModel(QAbstractListModel):
             self.ExitCondRole:  b'exitCond',
             self.ExitValRole:   b'exitVal',
             self.RampTimeRole:  b'rampTime',
-            self.FlowLimitRole: b'flowLimit',
+            self.FlowLimitRole:     b'flowLimit',
+            self.PressureLimitRole: b'pressureLimit',
         }
 
     def rowCount(self, parent=QModelIndex()):
@@ -390,7 +399,8 @@ class ProfileModel(QAbstractListModel):
             self.ExitCondRole:  s[4],
             self.ExitValRole:   float(s[5]),
             self.RampTimeRole:  float(s[6]) if len(s) > 6 else 0.0,
-            self.FlowLimitRole: float(s[7]) if len(s) > 7 else 0.0,
+            self.FlowLimitRole:     float(s[7]) if len(s) > 7 else 0.0,
+            self.PressureLimitRole: float(s[8]) if len(s) > 8 else 0.0,
         }.get(role)
 
     @pyqtSlot(int, str)
@@ -434,6 +444,12 @@ class ProfileModel(QAbstractListModel):
         if 0 <= row < len(self._steps):
             while len(self._steps[row]) < 8: self._steps[row].append(0.0)
             self._steps[row][7] = value; self._notify(row, self.FlowLimitRole)
+
+    @pyqtSlot(int, float)
+    def setPressureLimit(self, row, value):
+        if 0 <= row < len(self._steps):
+            while len(self._steps[row]) < 9: self._steps[row].append(0.0)
+            self._steps[row][8] = value; self._notify(row, self.PressureLimitRole)
 
     @pyqtSlot()
     def addStep(self):
@@ -795,6 +811,7 @@ class EspressoController(QObject):
         self._worker.send_command(CMD_SET_TW, float(step[2]))
         self._worker.send_command(CMD_SET_TG, float(step[3]))
         self._worker.send_command(CMD_SET_FL, float(step[7]) if len(step) > 7 else 0.0)
+        self._worker.send_command(CMD_SET_PL, float(step[8]) if len(step) > 8 else 0.0)
         self._update_step_target(float(step[1]))
 
     def _update_step_target(self, val):

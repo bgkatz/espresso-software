@@ -17,6 +17,7 @@ volatile float    target_val    = 0.0f;
 volatile float    target_tw     = 20.0f;
 volatile float    target_tg     = 20.0f;
 volatile float    flow_limit    = 0.0f;
+volatile float    pressure_limit = 0.0f;
 
 // Simulation state (replace with real sensor reads on hardware)
 volatile float sim_p         = 0.0f;
@@ -118,6 +119,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         if (sim_pump_duty < 0.0f)  sim_pump_duty = 0.0f;
         if (sim_pump_duty > 12.0f) sim_pump_duty = 12.0f;
         sim_p = sim_pump_duty;
+        if (pressure_limit > 0.0f && sim_p > pressure_limit) sim_p = pressure_limit;
         sim_f = sim_p / 1.5f;
         if (flow_limit > 0.0f && sim_f > flow_limit) sim_f = flow_limit;
         if (sim_f < 0.0f) sim_f = 0.0f;
@@ -178,6 +180,7 @@ int main(void) {
                 pkt.state.target_tw     = target_tw;
                 pkt.state.target_tg     = target_tg;
                 pkt.state.flow_limit    = flow_limit;
+                pkt.state.pressure_limit = pressure_limit;
                 pkt.state.flags         = (is_powered  ? STATE_FLAG_POWERED : 0u)
                                         | (steam_mode  ? STATE_FLAG_STEAM   : 0u);
                 pkt.state.control_mode  = (uint8_t)control_mode;
